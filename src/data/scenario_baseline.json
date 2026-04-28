@@ -1,0 +1,13 @@
+{
+  "nodes": [
+    { "id": "cust_us", "type": "customer", "name": "US Customers", "unitValue": 2000, "stockForm": "configured", "demand": { "mu": 100, "sigma": 20 } },
+    { "id": "dc_us", "type": "dc", "name": "US DC", "unitValue": 2000, "stockForm": "configured", "demand": { "mu": null, "sigma": null } },
+    { "id": "fac_main", "type": "factory", "name": "Main Factory", "unitValue": 1200, "stockForm": "generic", "demand": { "mu": null, "sigma": null } },
+    { "id": "sup_cpu", "type": "supplier", "name": "CPU Supplier", "unitValue": 250, "stockForm": "generic", "demand": { "mu": null, "sigma": null } }
+  ],
+  "edges": [
+    { "id": "e1", "from": "dc_us", "to": "cust_us", "L": 1, "s": 0, "R": 0, "bom": 1 },
+    { "id": "e2", "from": "fac_main", "to": "dc_us", "L": 3, "s": 1, "R": 0, "bom": 1 },
+    { "id": "e3", "from": "sup_cpu", "to": "fac_main", "L": 15, "s": 2, "R": 0, "bom": 1 }
+  ]
+}
