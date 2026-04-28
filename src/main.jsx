@@ -11,6 +11,7 @@ createRoot(document.getElementById("root")).render(
     <AppModeProvider>
       <App />
       <Analytics />
+      <SpeedInsights />
     </AppModeProvider>
   </StrictMode>
 );
