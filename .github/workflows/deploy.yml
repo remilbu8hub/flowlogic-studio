@@ -1,16 +1,12 @@
-name: Deploy to GitHub Pages
+name: Build Verification
 
 on:
   push:
     branches: ["main"]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+  pull_request:
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,11 +18,3 @@ jobs:
 
       - run: npm install
       - run: npm run build
-
-      - uses: actions/configure-pages@v4
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
-      - uses: actions/deploy-pages@v4
