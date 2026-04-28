@@ -3,9 +3,19 @@ import { THEME } from "../config/theme";
 import { buttonStyle, cardStyle, inputStyle } from "./formatters";
 
 const GITHUB_ISSUE_BASE_URL =
-  "https://github.com/remilbu8hub/UWYO-Supply-Chain-Simulation/issues/new";
+  "https://github.com/remilbu8hub/flowlogic-studio/issues/new";
 
-function buildGithubIssueUrl({ message, name, email, scenarioName, mode, nodeCount, edgeCount, boundaryColumn }) {
+function buildGithubIssueUrl({
+  message,
+  name,
+  email,
+  scenarioName,
+  mode,
+  nodeCount,
+  edgeCount,
+  boundaryColumn,
+  currentUrl,
+}) {
   const titleSource = message.trim() || scenarioName.trim() || "Support request";
   const title = `FlowLogic Studio support: ${titleSource.slice(0, 72)}`;
   const body = [
@@ -25,6 +35,7 @@ function buildGithubIssueUrl({ message, name, email, scenarioName, mode, nodeCou
     `- Nodes: ${nodeCount}`,
     `- Lanes: ${edgeCount}`,
     `- Boundary setting: ${boundaryColumn}`,
+    `- Current URL: ${currentUrl || "Not available"}`,
   ].join("\n");
 
   return `${GITHUB_ISSUE_BASE_URL}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
@@ -41,6 +52,7 @@ export default function SupportPage({
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [submitState, setSubmitState] = useState({ status: "idle", detail: "" });
+  const currentUrl = typeof window === "undefined" ? "" : window.location.href;
 
   const githubIssueUrl = useMemo(() => {
     return buildGithubIssueUrl({
@@ -52,8 +64,9 @@ export default function SupportPage({
       nodeCount,
       edgeCount,
       boundaryColumn,
+      currentUrl,
     });
-  }, [message, name, email, scenarioName, mode, nodeCount, edgeCount, boundaryColumn]);
+  }, [message, name, email, scenarioName, mode, nodeCount, edgeCount, boundaryColumn, currentUrl]);
 
   async function handleSubmitFeedback() {
     const trimmedMessage = message.trim();
@@ -79,6 +92,7 @@ export default function SupportPage({
           name: name.trim() || "",
           scenarioName,
           mode,
+          currentUrl,
         }),
       });
 
@@ -122,6 +136,9 @@ export default function SupportPage({
           Use the form below for lightweight FlowLogic Studio feedback, or open a GitHub issue
           when you want a tracked report with richer detail. Both paths include workspace context
           so the issue is easier to understand and reproduce.
+        </p>
+        <p style={{ margin: 0, color: THEME.colors.textMuted, lineHeight: 1.7 }}>
+          For tracked bugs or feature requests, GitHub Issues is the preferred path.
         </p>
       </div>
 

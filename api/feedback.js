@@ -22,6 +22,7 @@ export default async function handler(req, res) {
     message,
     scenarioName: String(body.scenarioName ?? "").trim() || "Supply Chain Workspace",
     mode: String(body.mode ?? "").trim() || "educator",
+    currentUrl: String(body.currentUrl ?? "").trim(),
     receivedAt: new Date().toISOString(),
   };
 
