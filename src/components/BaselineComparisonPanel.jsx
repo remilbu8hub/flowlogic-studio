@@ -1,6 +1,6 @@
 // src/components/BaselineComparisonPanel.jsx
 
-import { buttonStyle, cardStyle, money, num } from "./formatters";
+import { buttonStyle, cardStyle, money, num } from "../ui/formatters";
 
 function metricTone(delta, invert = false) {
   if (Math.abs(delta) < 0.0001) {

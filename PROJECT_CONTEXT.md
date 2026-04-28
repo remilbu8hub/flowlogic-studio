@@ -1,4 +1,4 @@
-# Supply Chain Simulator - Project Context
+# FlowLogic Studio - Project Context
 
 ## Purpose
 
@@ -49,6 +49,86 @@ Mode configuration lives in:
 Global mode state lives in:
 
 - `src/state/appModeContext.jsx`
+
+## 1. SYSTEM ARCHITECTURE
+
+The project is structured as a layered browser application with a deliberately thin simulation core and a visual-first UI shell.
+
+High-level layers:
+
+- **UI Layer**
+  - `src/components/`
+  - `src/components/modals/`
+  - `src/pages/`
+  - `src/ui/`
+- **State Layer**
+  - `src/App.jsx`
+  - `src/state/`
+  - `src/hooks/`
+- **Simulation Layer**
+  - `src/sim/`
+- **Data / Config Layer**
+  - `src/config/`
+  - `src/model/`
+  - `src/data/`
+- **Theme + UI System**
+  - `src/config/theme.js`
+  - `src/theme/uiScale.js`
+  - `src/index.css`
+
+Layer responsibilities:
+
+- The **UI Layer** renders the simulator workspace, modals, support/about pages, and reusable UI primitives.
+- The **State Layer** orchestrates user actions, temporary app state, mode state, and scenario editing state before values are handed to the simulation.
+- The **Simulation Layer** owns graph transforms, transport normalization, lane geography, cost post-processing, and the core engine.
+- The **Data / Config Layer** defines seeded scenarios, static cards, domain tables, transport definitions, mode definitions, and parameter libraries.
+- The **Theme + UI System** controls visual tokens, palette switching, and global UI scaling without changing simulation behavior.
+
+Important architectural rule:
+
+- React state and UI orchestration may be complex
+- simulation math should remain explicit and isolated
+- design/config concerns should not leak into `sim/engine.js`
+
+## 2. DATA FLOW
+
+Current app data flow should be understood as a linear pipeline:
+
+1. The user interacts with the UI
+   - drag a node
+   - edit a lane
+   - load a scenario
+   - change a parameter
+   - switch product mode or theme
+2. React state updates
+   - `src/App.jsx` manages app-shell state, view state, theme state, and modal state
+   - `src/state/useSimulatorState.js` manages graph editing state, selection state, scenario state, and leaderboard interactions
+   - `src/state/appModeContext.jsx` manages educator/business mode
+3. Graph/state helpers normalize structure
+   - node modes are reapplied from boundary logic
+   - scenario edits, lane defaults, and geography rules are reconciled
+   - relevant helpers live in `src/sim/graphHelpers.js` and `src/sim/laneGeography.js`
+4. Transport effects are applied before simulation
+   - `src/sim/applyTransportEffects.js`
+   - produces transport-adjusted lead time, variability, and lane cost metadata
+5. The simulation engine runs
+   - `src/sim/engine.js`
+   - receives the current effective graph plus selected parameters
+6. Post-processing runs after the engine
+   - `src/sim/applyLaneTransportCost.js`
+   - baseline comparison metrics and coaching inputs are derived at the app layer
+7. Results are passed back into the UI
+   - graph canvas
+   - metric cards
+   - per-node table
+   - coaching / insight panel
+   - cost accumulation view
+8. The workspace re-renders
+   - graph, cost view, support content, modals, and panels all reflect the latest state
+
+Keep this flow explicit.
+
+Do not hide simulation-impacting behavior inside visual components unless the behavior is purely presentational.
 
 ## Core Mental Model
 
@@ -358,6 +438,45 @@ Current spacing/layout notes:
 - Horizontal layout constants currently use wider stage gaps in graph helpers
 - Boundary line can skip around lane label rectangles to avoid readability problems
 
+## 5. GRAPH + LAYOUT SYSTEM
+
+The graph workspace uses a staged, left-to-right mental model even though the boundary and node positions are not tied to a rigid fixed-column meaning.
+
+Current layout behavior:
+
+- The graph reads from upstream to downstream:
+  - Supplier → Factory → DC → Retail → Customer
+- Default node placement and auto layout are stage-aware
+- Drag behavior is constrained by horizontal stage bands so nodes do not drift into invalid echelons
+- The graph canvas is intentionally larger than the visible viewport to support editing and branching
+
+Auto layout rules:
+
+- Auto layout is column-based, not force-directed
+- Nodes are grouped by functional stage / graph layer
+- Branches are re-spaced vertically to reduce overlap and improve readability
+- The heuristic tries to keep related branches visually centered without changing underlying simulation meaning
+- Horizontal spacing is intentionally widened to leave room for lane labels
+
+Spacing expectations:
+
+- Horizontal spacing should prioritize readable lane labels and visible branching
+- Vertical spacing should prioritize branch separation and collision reduction
+- Large networks are allowed to scroll inside the graph canvas
+
+Collision / readability rules:
+
+- Node overlap avoidance is heuristic, not physics-based
+- Lane labels should remain centered on their lanes
+- The push/pull boundary line may be segmented so it does not cut through lane labels
+
+Push/pull separation rule:
+
+- **Logical boundary** = derived from graph depth and `boundaryColumn`
+- **Visual boundary** = derived from current node positions after modes are assigned
+
+Never reverse that relationship.
+
 ## Node Card Rules
 
 Node cards should show:
@@ -438,7 +557,7 @@ Notable scenario coverage now includes:
 
 Learning modal:
 
-- `src/components/LearningModal.jsx`
+- `src/components/modals/LearningModal.jsx`
 
 Coaching / insight panel:
 
@@ -484,8 +603,8 @@ Top-level views:
 
 Current product pages:
 
-- `src/components/AboutPage.jsx`
-- `src/components/SupportPage.jsx`
+- `src/pages/AboutPage.jsx`
+- `src/pages/SupportPage.jsx`
 
 About page should explain:
 
@@ -535,14 +654,15 @@ Rename workspace workflow:
 
 Relevant components:
 
-- `src/components/SaveScenarioModal.jsx`
-- `src/components/RenameWorkspaceModal.jsx`
+- `src/components/modals/SaveScenarioModal.jsx`
+- `src/components/modals/RenameWorkspaceModal.jsx`
 
 ## Theme System
 
 Theme source:
 
 - `src/config/theme.js`
+- `src/theme/uiScale.js`
 
 Current visual direction:
 
@@ -567,6 +687,43 @@ Important tokens include:
 - `warning`
 - `danger`
 - `transport.*`
+
+## 6. UI SYSTEM
+
+The app should behave like a full-width workspace, not like a centered marketing page or article layout.
+
+Current UI system rules:
+
+- No global centered article-style max-width should starve the simulator
+- The graph workspace is the primary visual region and should dominate available width
+- Left and right side panels should stay bounded with clamp-based widths
+- Wide monitors should expand the workspace first, not just enlarge side panels
+
+Responsive layout model:
+
+- The app uses responsive tiering for small / medium / large desktop-class widths
+- Flexbox and clamp-based sizing are preferred over rigid breakpoint-only layouts
+- Internal graph scroll is acceptable for genuinely large networks
+- Whole-page horizontal overflow is not
+
+Panel sizing strategy:
+
+- Left controls: bounded and readable
+- Center graph workspace: flexible, priority region
+- Right disruption/supporting panel: bounded and stackable when space gets tight
+
+UI scaling:
+
+- Global UI scaling now lives in `src/theme/uiScale.js`
+- `UI_SCALE` is the source of truth
+- helper functions such as `scale()`, `scaleNum()`, and `scaleClamp()` should be preferred for repeated size constants
+- scaling should be applied incrementally to obvious, repeated UI values instead of forcing a full rewrite
+
+Theme usage rules:
+
+- Use theme tokens from `src/config/theme.js` where practical
+- Reusable UI primitives now live in `src/ui/`
+- Shared presentational helpers should prefer `src/ui/formatters.jsx` over duplicating card/button/input styles
 
 ## Disruptions
 
@@ -660,6 +817,92 @@ For any meaningful feature or behavior change, ask:
 - Prioritize responsiveness
 - Favor straightforward implementation over abstract flexibility
 
+## 3. SAFE VS UNSAFE CHANGE AREAS
+
+This section is important for both developers and AI agents.
+
+### Safe to modify
+
+- UI components and presentation behavior
+- Layout and responsive structure
+- Theme tokens, palette behavior, and UI scale helpers
+- Scenario definitions and seeded content
+- Learning/coaching copy
+- Graph visualization details that do not alter simulation meaning
+- Support/About page content and app-shell product framing
+
+### Use caution
+
+- `src/sim/graphHelpers.js`
+  - affects node depth, boundary application, layout assumptions, and graph interpretation
+- transport logic
+  - `src/config/transportTypes.js`
+  - `src/sim/applyTransportEffects.js`
+  - `src/sim/laneGeography.js`
+- lane cost post-processing
+  - `src/sim/applyLaneTransportCost.js`
+- state orchestration in `src/state/useSimulatorState.js`
+  - can accidentally change editor behavior or scenario reset/load behavior
+
+### High risk
+
+- `src/sim/engine.js`
+- the core simulation loop
+- inventory math
+- replenishment behavior
+- shipment advancement logic
+- service-level / stock / response-time relationships
+
+Default risk rule:
+
+- If a change touches `engine.js`, assume it is high risk until proven otherwise
+
+## 4. FILE PLACEMENT RULES
+
+Place new code according to responsibility, not convenience.
+
+### Put code here
+
+- **Top-level views/pages**
+  - `src/pages/`
+  - example: About, Support
+- **Reusable presentational UI**
+  - `src/ui/`
+  - example: modal shell, collapsible section, shared formatting helpers
+- **Simulator-specific UI**
+  - `src/components/`
+  - example: graph canvas, control panel, disruption deck, metric cards
+- **Modal workflows**
+  - `src/components/modals/`
+  - example: save, rename, learning, parameters, welcome
+- **Config values / tokens / app modes**
+  - `src/config/`
+- **Static seeded content**
+  - `src/data/`
+- **Domain tables and model definitions**
+  - `src/model/`
+- **Reusable React hooks**
+  - `src/hooks/`
+- **React state orchestration**
+  - `src/state/`
+- **Graph transforms / simulation helpers**
+  - `src/sim/`
+- **Core simulation math**
+  - `src/sim/engine.js`
+
+### Placement examples
+
+- UI behavior or layout refinement → component file or `src/ui/`
+- graph transformations or depth/boundary logic → `src/sim/graphHelpers.js`
+- transport defaults or geography rules → `src/sim/laneGeography.js` or `src/config/transportTypes.js`
+- simulation math → `src/sim/engine.js`
+- config values or mode definitions → `src/config/`
+- reusable non-React helpers with UI formatting intent → `src/ui/formatters.jsx`
+
+Anti-pattern to avoid:
+
+- Do not put simulation-impacting logic into visual components just because the data is already available there
+
 ## Coding Guidelines
 
 - Preserve existing behavior unless explicitly asked to change it
@@ -694,12 +937,27 @@ Do not:
 
 These are useful to remember after context loss:
 
-- `src/App.jsx` currently contains a duplicated simulator render path plus a `simulatorView` constant that appears to be dead/duplicated UI structure
-- The app still builds and works, but `App.jsx` deserves a cleanup/deduplication pass later
+- Auto layout is still heuristic-based rather than globally optimal
+- Lane transport cost is still a proxy model, not a full logistics economics model
+- UI scaling is now introduced, but it is not yet applied everywhere in the codebase
+- Large or highly branched graphs can still require internal graph scrolling
+- Some components still use fixed values or one-off style constants rather than full tokenization
 - Some visible text in parts of the app may still have encoding/mojibake artifacts from earlier phases
 - Node stage fill colors in the graph are still more semantic than fully theme-tokenized
 
 These are cleanup items, not active engine bugs.
+
+## 8. AI OPERATING INSTRUCTIONS
+
+If an AI agent is working in this repository, follow these operating rules:
+
+- Always respect the `engine.js` boundary unless there is a clear, justified bug fix
+- Prefer small, incremental changes over broad rewrites
+- Keep logic explicit and visible rather than clever or hidden
+- Place code in the correct layer instead of attaching it to whatever file is nearby
+- Prioritize clarity, traceability, and visual interpretability over abstraction
+- Do not introduce user-facing version language such as `V2`, `new feature`, or similar internal rollout phrasing
+- When in doubt, preserve behavior first and improve structure second
 
 ## Default Decision Rule
 

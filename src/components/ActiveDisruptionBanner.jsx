@@ -1,6 +1,6 @@
 // src/components/ActiveDisruptionBanner.jsx
 
-import { buttonStyle } from "./formatters";
+import { buttonStyle } from "../ui/formatters";
 
 export default function ActiveDisruptionBanner({ activeCard, onClear }) {
   if (!activeCard) return null;

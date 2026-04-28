@@ -1,6 +1,6 @@
 // src/components/ParametersModal.jsx
 
-import ModalShell from "./ModalShell";
+import ModalShell from "../../ui/ModalShell";
 
 function safeNum(x, fallback = 0) {
   return typeof x === "number" && Number.isFinite(x) ? x : fallback;

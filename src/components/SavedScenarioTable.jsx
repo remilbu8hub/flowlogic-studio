@@ -1,6 +1,6 @@
 // src/components/SavedScenarioTable.jsx
 
-import { money, num, riskColor } from "./formatters";
+import { money, num, riskColor } from "../ui/formatters";
 
 export default function SavedScenarioTable({ entries = [] }) {
   if (!entries.length) {

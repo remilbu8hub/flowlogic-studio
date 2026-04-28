@@ -1,13 +1,14 @@
 // src/components/DashboardHeader.jsx
 
 import { THEME } from "../config/theme";
+import { scaleClamp, scaleMin, scaleNum } from "../theme/uiScale";
 
 function topButtonStyle(variant = "default") {
   const base = {
     border: `1px solid ${THEME.colors.border}`,
     borderRadius: THEME.radius.md,
-    padding: "10px 14px",
-    fontSize: 14,
+    padding: `${scaleMin(8, 6)}px ${scaleMin(12, 10)}px`,
+    fontSize: scaleMin(13, 12),
     fontWeight: 600,
     cursor: "pointer",
     background: THEME.colors.surface,
@@ -40,8 +41,8 @@ function navButtonStyle(isActive) {
   return {
     border: `1px solid ${isActive ? THEME.colors.primary : THEME.colors.border}`,
     borderRadius: THEME.radius.md,
-    padding: "8px 12px",
-    fontSize: 14,
+    padding: `${scaleMin(7, 6)}px ${scaleMin(11, 10)}px`,
+    fontSize: scaleMin(13, 12),
     fontWeight: 700,
     cursor: "pointer",
     background: isActive ? THEME.colors.primary : THEME.colors.surface,
@@ -62,21 +63,22 @@ export default function DashboardHeader({
   onOpenLearning,
   onOpenLeaderboard,
   onResetScenario,
+  onOpenThemePicker,
 }) {
   return (
     <div
       style={{
         display: "grid",
-        gap: 16,
+        gap: scaleNum(14),
         width: "100%",
-        marginBottom: 20,
+        marginBottom: scaleNum(18),
       }}
     >
       <div
         style={{
           display: "flex",
           alignItems: "flex-start",
-          gap: "clamp(12px, 1.6vw, 20px)",
+          gap: scaleClamp(12, 1.6, 20),
           flexWrap: "wrap",
           minWidth: 0,
           width: "100%",
@@ -86,7 +88,7 @@ export default function DashboardHeader({
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "clamp(10px, 1.4vw, 16px)",
+            gap: scaleClamp(10, 1.4, 16),
             flexWrap: "wrap",
             minWidth: 0,
             flex: "1 1 420px",
@@ -96,13 +98,13 @@ export default function DashboardHeader({
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 8,
-              padding: "6px 10px",
+              gap: scaleNum(8),
+              padding: `${scaleMin(5, 5)}px ${scaleMin(9, 9)}px`,
               borderRadius: 999,
               background: THEME.colors.surface,
               border: `1px solid ${THEME.colors.border}`,
               color: THEME.colors.secondary,
-              fontSize: 12,
+              fontSize: scaleMin(11, 11),
               fontWeight: 800,
               letterSpacing: "0.06em",
               textTransform: "uppercase",
@@ -115,7 +117,7 @@ export default function DashboardHeader({
           <div
             style={{
               display: "flex",
-              gap: 10,
+              gap: scaleNum(8),
               flexWrap: "wrap",
               alignItems: "center",
               minWidth: 0,
@@ -149,7 +151,7 @@ export default function DashboardHeader({
         <div
           style={{
             display: "flex",
-            gap: 10,
+            gap: scaleNum(8),
             flexWrap: "wrap",
             justifyContent: "flex-end",
             alignItems: "center",
@@ -180,6 +182,10 @@ export default function DashboardHeader({
             Leaderboard
           </button>
 
+          <button type="button" onClick={onOpenThemePicker} style={topButtonStyle()}>
+            Theme
+          </button>
+
           <button type="button" onClick={onResetScenario} style={topButtonStyle("danger")}>
             Reset Scenario
           </button>
@@ -189,15 +195,15 @@ export default function DashboardHeader({
       <div
         style={{
           display: "grid",
-          gap: 10,
+          gap: scaleNum(10),
           minWidth: 0,
-          paddingTop: 4,
+          paddingTop: scaleNum(4),
         }}
       >
         <h1
           style={{
             margin: 0,
-            fontSize: "clamp(32px, 4vw, 48px)",
+            fontSize: scaleClamp(28, 3.4, 40),
             lineHeight: 1.05,
             color: THEME.colors.textPrimary,
           }}
@@ -208,10 +214,10 @@ export default function DashboardHeader({
         <p
           style={{
             margin: 0,
-            fontSize: "clamp(15px, 1.6vw, 18px)",
+            fontSize: scaleClamp(14, 1.3, 16),
             color: THEME.colors.textMuted,
             maxWidth: 900,
-            lineHeight: 1.55,
+            lineHeight: 1.5,
           }}
         >
           {subtitle}

@@ -9,8 +9,8 @@ import { NodeType } from "../model/networkTypes";
 
 const X_START = 120;
 const X_STEP = 420;
-const Y_START = 140;
-const Y_STEP = 160;
+const Y_START = 360;
+const Y_STEP = 180;
 
 function clone(value) {
   return structuredClone(value);
@@ -22,6 +22,41 @@ function createId(prefix = "id") {
 
 function safeNum(x, fallback = 0) {
   return typeof x === "number" && Number.isFinite(x) ? x : fallback;
+}
+
+function compareNodesForLayout(a, b) {
+  const byY = safeNum(a?.y, Y_START) - safeNum(b?.y, Y_START);
+  if (byY !== 0) return byY;
+
+  const byName = String(a?.name ?? "").localeCompare(String(b?.name ?? ""));
+  if (byName !== 0) return byName;
+
+  return String(a?.id ?? "").localeCompare(String(b?.id ?? ""));
+}
+
+function centeredYForIndex(index, count) {
+  const offset = index - (count - 1) / 2;
+  return Math.round(Y_START + offset * Y_STEP);
+}
+
+function placeNodesInColumns(nodesByColumn) {
+  const laidOutNodes = new Map();
+
+  [...nodesByColumn.keys()]
+    .sort((a, b) => a - b)
+    .forEach((column) => {
+      const columnNodes = [...(nodesByColumn.get(column) ?? [])].sort(compareNodesForLayout);
+
+      columnNodes.forEach((node, index) => {
+        laidOutNodes.set(node.id, {
+          ...node,
+          x: X_START + column * X_STEP,
+          y: centeredYForIndex(index, columnNodes.length),
+        });
+      });
+    });
+
+  return laidOutNodes;
 }
 
 export function edgeKey(fromId, toId) {
@@ -617,28 +652,23 @@ export function autoLayoutGraph(nodes, edges) {
   const layerMap = graphLayers(nodes, edges);
 
   if (topo.hasCycle) {
-    return nodes.map((node, idx) => ({
-      ...node,
-      x: X_START + stageRank(node.type) * X_STEP,
-      y: Y_START + idx * Y_STEP,
-    }));
+    const nodesByColumn = new Map();
+
+    nodes.forEach((node) => {
+      const column = stageRank(node.type);
+      if (!nodesByColumn.has(column)) {
+        nodesByColumn.set(column, []);
+      }
+
+      nodesByColumn.get(column).push(node);
+    });
+
+    const laidOutNodes = placeNodesInColumns(nodesByColumn);
+    return nodes.map((node) => laidOutNodes.get(node.id)).filter(Boolean);
   }
 
-  const nextNodes = new Map();
-  const usedRowsByColumn = new Map();
-
-  function claimRow(column, preferredRow = 0) {
-    const used = usedRowsByColumn.get(column) ?? new Set();
-    let row = Math.max(0, preferredRow);
-
-    while (used.has(row)) {
-      row += 1;
-    }
-
-    used.add(row);
-    usedRowsByColumn.set(column, used);
-    return row;
-  }
+  const nodesByColumn = new Map();
+  const layoutHints = new Map();
 
   for (const nodeId of topo.order) {
     const node = findNodeById(nodes, nodeId);
@@ -646,37 +676,48 @@ export function autoLayoutGraph(nodes, edges) {
 
     const column = layerMap.get(nodeId) ?? stageRank(node.type);
     const parentIds = incomingEdgesOf(nodeId, edges).map((edge) => edge.from);
+    const parentHints = parentIds
+      .map((parentId) => layoutHints.get(parentId))
+      .filter((value) => typeof value === "number" && Number.isFinite(value));
 
-    let preferredRow = 0;
+    const layoutHint =
+      parentHints.length > 0
+        ? parentHints.reduce((sum, value) => sum + value, 0) / parentHints.length
+        : safeNum(node.y, Y_START);
 
-    if (parentIds.length === 0) {
-      preferredRow = 0;
-    } else {
-      const parentRows = parentIds
-        .map((pid) => nextNodes.get(pid))
-        .filter(Boolean)
-        .map((p) => p.row);
-
-      if (parentRows.length > 0) {
-        preferredRow = Math.round(
-          parentRows.reduce((sum, row) => sum + row, 0) / parentRows.length
-        );
-      }
+    if (!nodesByColumn.has(column)) {
+      nodesByColumn.set(column, []);
     }
 
-    const row = claimRow(column, preferredRow);
-
-    nextNodes.set(nodeId, {
+    nodesByColumn.get(column).push({
       ...node,
-      x: X_START + column * X_STEP,
-      y: Y_START + row * Y_STEP,
-      row,
-      column,
+      layoutHint,
     });
+    layoutHints.set(nodeId, layoutHint);
   }
 
+  const laidOutNodes = new Map();
+
+  [...nodesByColumn.keys()]
+    .sort((a, b) => a - b)
+    .forEach((column) => {
+      const columnNodes = [...(nodesByColumn.get(column) ?? [])].sort((a, b) => {
+        const byHint = safeNum(a.layoutHint, Y_START) - safeNum(b.layoutHint, Y_START);
+        if (byHint !== 0) return byHint;
+        return compareNodesForLayout(a, b);
+      });
+
+      columnNodes.forEach((node, index) => {
+        laidOutNodes.set(node.id, {
+          ...node,
+          x: X_START + column * X_STEP,
+          y: centeredYForIndex(index, columnNodes.length),
+        });
+      });
+    });
+
   return topo.order
-    .map((id) => nextNodes.get(id))
+    .map((id) => laidOutNodes.get(id))
     .filter(Boolean)
-    .map(({ row, column, ...node }) => node);
+    .map(({ layoutHint, ...node }) => node);
 }

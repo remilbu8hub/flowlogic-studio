@@ -1,6 +1,7 @@
 // src/components/formatters.jsx
 
 import { THEME } from "../config/theme";
+import { scaleMin, scaleNum } from "../theme/uiScale";
 
 export function money(x) {
   return Number(x || 0).toLocaleString(undefined, {
@@ -27,8 +28,8 @@ export function riskColor(label) {
 export function cardStyle() {
   return {
     border: `1px solid ${THEME.colors.border}`,
-    borderRadius: THEME.radius.lg,
-    padding: 16,
+    borderRadius: scaleNum(THEME.radius.lg),
+    padding: scaleNum(14),
     background: THEME.colors.surface,
     boxShadow: THEME.shadow.card,
   };
@@ -36,9 +37,9 @@ export function cardStyle() {
 
 export function buttonStyle(variant = "default") {
   const base = {
-    borderRadius: THEME.radius.md,
-    padding: "10px 14px",
-    fontSize: 14,
+    borderRadius: scaleNum(THEME.radius.md),
+    padding: `${scaleMin(8, 6)}px ${scaleMin(12, 10)}px`,
+    fontSize: scaleMin(13, 12),
     fontWeight: 600,
     cursor: "pointer",
     border: `1px solid ${THEME.colors.border}`,
@@ -70,12 +71,12 @@ export function buttonStyle(variant = "default") {
 export function inputStyle() {
   return {
     width: "100%",
-    minHeight: 40,
-    padding: "8px 10px",
+    minHeight: scaleMin(38, 36),
+    padding: `${scaleNum(7)}px ${scaleNum(9)}px`,
     border: `1px solid ${THEME.colors.border}`,
-    borderRadius: THEME.radius.sm,
+    borderRadius: scaleNum(THEME.radius.sm),
     boxSizing: "border-box",
-    background: THEME.colors.surface,
+    background: THEME.colors.surfaceRow ?? THEME.colors.surface,
     color: THEME.colors.textPrimary,
   };
 }

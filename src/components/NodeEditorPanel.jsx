@@ -2,8 +2,8 @@
 
 import { NodeType } from "../model/networkTypes";
 import { THEME } from "../config/theme";
-import ModalShell from "./ModalShell";
-import { buttonStyle, inputStyle, money, num, riskColor } from "./formatters";
+import ModalShell from "../ui/ModalShell";
+import { buttonStyle, inputStyle, money, num, riskColor } from "../ui/formatters";
 
 const STOCK_FORM_OPTIONS = [
   { value: "components", label: "Components" },
@@ -38,7 +38,7 @@ function DerivedInfoCard({ label, value, subtext, valueColor = THEME.colors.text
         border: `1px solid ${THEME.colors.border}`,
         borderRadius: THEME.radius.md,
         padding: 12,
-        background: THEME.colors.background,
+        background: THEME.colors.surfaceRow ?? THEME.colors.background,
       }}
     >
       <div style={{ fontSize: 12, color: THEME.colors.textMuted, marginBottom: 4 }}>{label}</div>
@@ -375,7 +375,7 @@ export default function NodeEditorPanel({
                       fontSize: 12,
                       fontWeight: 700,
                       color: THEME.colors.textMuted,
-                      background: THEME.colors.background,
+                      background: THEME.colors.surfaceRow ?? THEME.colors.background,
                       border: `1px solid ${THEME.colors.border}`,
                       borderRadius: 999,
                       padding: "5px 9px",
@@ -436,7 +436,7 @@ export default function NodeEditorPanel({
                     style={{
                       border: `1px solid ${THEME.colors.border}`,
                       borderRadius: THEME.radius.sm,
-                      background: THEME.colors.background,
+                      background: THEME.colors.surfaceRow ?? THEME.colors.background,
                       padding: "8px 10px",
                       lineHeight: 1.4,
                       color: THEME.colors.textPrimary,

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { THEME } from "../config/theme";
-import { buttonStyle, cardStyle, inputStyle } from "./formatters";
+import { buttonStyle, cardStyle, inputStyle } from "../ui/formatters";
 
 const GITHUB_ISSUE_BASE_URL =
   "https://github.com/remilbu8hub/flowlogic-studio/issues/new";

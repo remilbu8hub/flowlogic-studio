@@ -1,17 +1,24 @@
 // src/components/MetricCards.jsx
 
 import { THEME } from "../config/theme";
-import { cardStyle, money, num, riskColor } from "./formatters";
+import { scaleNum } from "../theme/uiScale";
+import { cardStyle, money, num, riskColor } from "../ui/formatters";
 
 function MetricCard({ label, value, subtext, valueColor = THEME.colors.textPrimary }) {
   return (
     <div style={cardStyle()}>
-      <div style={{ fontSize: 13, color: THEME.colors.textMuted, marginBottom: 6 }}>
+      <div
+        style={{
+          fontSize: scaleNum(13),
+          color: THEME.colors.textMuted,
+          marginBottom: scaleNum(6),
+        }}
+      >
         {label}
       </div>
       <div
         style={{
-          fontSize: 34,
+          fontSize: scaleNum(30),
           fontWeight: 700,
           color: valueColor,
           lineHeight: 1.1,
@@ -20,7 +27,13 @@ function MetricCard({ label, value, subtext, valueColor = THEME.colors.textPrima
         {value}
       </div>
       {subtext ? (
-        <div style={{ marginTop: 8, fontSize: 13, color: THEME.colors.textMuted }}>
+        <div
+          style={{
+            marginTop: scaleNum(8),
+            fontSize: scaleNum(13),
+            color: THEME.colors.textMuted,
+          }}
+        >
           {subtext}
         </div>
       ) : null}
@@ -28,14 +41,22 @@ function MetricCard({ label, value, subtext, valueColor = THEME.colors.textPrima
   );
 }
 
-export default function MetricCards({ result }) {
+export default function MetricCards({ result, layoutTier = "medium" }) {
+  const columns =
+    layoutTier === "large"
+      ? "repeat(5, minmax(0, 1fr))"
+      : layoutTier === "medium"
+        ? "repeat(3, minmax(0, 1fr))"
+        : "repeat(2, minmax(0, 1fr))";
+
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: 16,
-        marginBottom: 8,
+        gridTemplateColumns: columns,
+        gap: scaleNum(14),
+        marginBottom: scaleNum(8),
+        minWidth: 0,
       }}
     >
       <MetricCard

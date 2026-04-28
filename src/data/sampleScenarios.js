@@ -2,6 +2,11 @@
 
 import { NodeType } from "../model/networkTypes";
 
+const SAMPLE_LEFT_MARGIN = 120;
+const SAMPLE_STAGE_GAP = 420;
+const SAMPLE_COLUMN_CENTER_Y = 360;
+const SAMPLE_VERTICAL_GAP = 180;
+
 function node({
   id,
   type,
@@ -48,6 +53,55 @@ function edge({ id, from, to, L, s, R = 0, bom = 1 }) {
   };
 }
 
+function stageRank(type) {
+  if (type === NodeType.SUPPLIER) return 0;
+  if (type === NodeType.FACTORY) return 1;
+  if (type === NodeType.DC) return 2;
+  if (type === NodeType.RETAIL) return 3;
+  if (type === NodeType.CUSTOMER) return 4;
+  return 99;
+}
+
+function centeredY(index, count) {
+  const offset = index - (count - 1) / 2;
+  return Math.round(SAMPLE_COLUMN_CENTER_Y + offset * SAMPLE_VERTICAL_GAP);
+}
+
+function applyScenarioNodeLayout(nodes) {
+  const nodesByStage = new Map();
+
+  nodes.forEach((currentNode) => {
+    const stage = stageRank(currentNode.type);
+    if (!nodesByStage.has(stage)) {
+      nodesByStage.set(stage, []);
+    }
+
+    nodesByStage.get(stage).push(currentNode);
+  });
+
+  const laidOutNodes = new Map();
+
+  [...nodesByStage.keys()]
+    .sort((a, b) => a - b)
+    .forEach((stage) => {
+      const columnNodes = [...(nodesByStage.get(stage) ?? [])].sort((a, b) => {
+        const byY = (a.y ?? SAMPLE_COLUMN_CENTER_Y) - (b.y ?? SAMPLE_COLUMN_CENTER_Y);
+        if (byY !== 0) return byY;
+        return String(a.name ?? a.id).localeCompare(String(b.name ?? b.id));
+      });
+
+      columnNodes.forEach((currentNode, index) => {
+        laidOutNodes.set(currentNode.id, {
+          ...currentNode,
+          x: SAMPLE_LEFT_MARGIN + stage * SAMPLE_STAGE_GAP,
+          y: centeredY(index, columnNodes.length),
+        });
+      });
+    });
+
+  return nodes.map((currentNode) => laidOutNodes.get(currentNode.id) ?? currentNode);
+}
+
 function scenario(config) {
   return {
     intendedMode: "both",
@@ -57,6 +111,7 @@ function scenario(config) {
     ...config,
     shortDescription: config.shortDescription ?? config.description ?? "",
     learningPurpose: config.learningPurpose ?? config.learningGoal ?? "",
+    nodes: applyScenarioNodeLayout(config.nodes ?? []),
   };
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { THEME } from "../config/theme";
 import { getTransportTypeConfig } from "../config/transportTypes";
-import { money } from "./formatters";
+import { money } from "../ui/formatters";
 import { computeNodeDepths, stageRank } from "../sim/graphHelpers";
 
 const LINE_STYLE = "diagonal";

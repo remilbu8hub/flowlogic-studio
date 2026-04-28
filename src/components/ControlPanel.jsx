@@ -2,7 +2,8 @@
 
 import { THEME } from "../config/theme";
 import { NodeType } from "../model/networkTypes";
-import { buttonStyle, cardStyle, inputStyle, num } from "./formatters";
+import { scaleNum } from "../theme/uiScale";
+import { buttonStyle, cardStyle, inputStyle, num } from "../ui/formatters";
 
 function boundaryLabel(boundaryColumn, boundaryOptions) {
   return boundaryOptions.find((opt) => opt.value === boundaryColumn)?.label ?? "After DCs";
@@ -91,7 +92,7 @@ function ToolButton({ disabled, variant = "default", children, onClick }) {
         ...buttonStyle(variant),
         opacity: disabled ? 0.45 : 1,
         cursor: disabled ? "not-allowed" : "pointer",
-        fontSize: 16,
+        fontSize: scaleNum(14),
       }}
       disabled={disabled}
       type="button"
@@ -151,18 +152,27 @@ export default function ControlPanel({
     <div
       style={{
         display: "grid",
-        gap: 16,
+        gap: scaleNum(14),
         position: "sticky",
-        top: 10,
+        top: scaleNum(10),
         alignSelf: "start",
         minWidth: 0,
       }}
     >
       <div style={panelStyle()}>
-        <h2 style={{ marginTop: 0, fontSize: 24 }}>Scenario Controls</h2>
+        <h2 style={{ marginTop: 0, fontSize: scaleNum(22), marginBottom: scaleNum(14) }}>
+          Scenario Controls
+        </h2>
 
-        <div style={{ marginBottom: 18 }}>
-          <label style={{ display: "block", fontWeight: 600, fontSize: 17, marginBottom: 8 }}>
+        <div style={{ marginBottom: scaleNum(16) }}>
+          <label
+            style={{
+              display: "block",
+              fontWeight: 600,
+              fontSize: scaleNum(15),
+              marginBottom: scaleNum(8),
+            }}
+          >
             Service Level: {num(serviceLevel * 100, 0)}%
           </label>
           <input
@@ -178,9 +188,9 @@ export default function ControlPanel({
             style={{
               display: "flex",
               justifyContent: "space-between",
-              fontSize: 13,
+              fontSize: scaleNum(13),
               color: THEME.colors.textMuted,
-              marginTop: 6,
+              marginTop: scaleNum(6),
             }}
           >
             {supportedServiceLevels.map((level) => (
@@ -189,8 +199,15 @@ export default function ControlPanel({
           </div>
         </div>
 
-        <div style={{ marginBottom: 18 }}>
-          <label style={{ display: "block", fontWeight: 600, fontSize: 16, marginBottom: 8 }}>
+        <div style={{ marginBottom: scaleNum(16) }}>
+          <label
+            style={{
+              display: "block",
+              fontWeight: 600,
+              fontSize: scaleNum(15),
+              marginBottom: scaleNum(8),
+            }}
+          >
             Push-Pull Boundary: {boundaryLabel(boundaryColumn, boundaryOptions)}
           </label>
           <input
@@ -206,10 +223,10 @@ export default function ControlPanel({
             style={{
               display: "flex",
               justifyContent: "space-between",
-              fontSize: 15,
+              fontSize: scaleNum(13),
               color: THEME.colors.textMuted,
-              marginTop: 6,
-              gap: 8,
+              marginTop: scaleNum(6),
+              gap: scaleNum(8),
             }}
           >
             <span>Suppliers</span>
@@ -219,12 +236,19 @@ export default function ControlPanel({
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 10, marginBottom: 18, fontSize: 17 }}>
+        <div
+          style={{
+            display: "grid",
+            gap: scaleNum(8),
+            marginBottom: scaleNum(16),
+            fontSize: scaleNum(15),
+          }}
+        >
           <label
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: scaleNum(8),
               fontWeight: 600,
               cursor: "pointer",
             }}
@@ -241,7 +265,7 @@ export default function ControlPanel({
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: scaleNum(8),
               fontWeight: 600,
               cursor: "pointer",
             }}
@@ -258,7 +282,7 @@ export default function ControlPanel({
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: scaleNum(8),
               fontWeight: 600,
               cursor: "pointer",
             }}
@@ -276,7 +300,7 @@ export default function ControlPanel({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
+                gap: scaleNum(8),
                 fontWeight: 600,
                 cursor: "pointer",
               }}
@@ -291,18 +315,31 @@ export default function ControlPanel({
           ) : null}
         </div>
 
-        <div style={{ marginBottom: 12, fontSize: 14, color: THEME.colors.textMuted }}>
+        <div
+          style={{
+            marginBottom: scaleNum(12),
+            fontSize: scaleNum(14),
+            color: THEME.colors.textMuted,
+          }}
+        >
           {demandModeLabel(selectedNode, globalDemandMode)}:{" "}
           <b>{activeCustomer?.name ?? "No customer selected"}</b>
         </div>
 
         <div
           style={{
-            marginBottom: 18,
+            marginBottom: scaleNum(18),
             opacity: globalDemandMode || selectedNode?.type === NodeType.CUSTOMER ? 1 : 0.5,
           }}
         >
-          <label style={{ display: "block", fontWeight: 600, fontSize: 18, marginBottom: 2 }}>
+          <label
+            style={{
+              display: "block",
+              fontWeight: 600,
+              fontSize: scaleNum(15),
+              marginBottom: scaleNum(4),
+            }}
+          >
             Average demand (units/day): {num(currentMu, 0)}
           </label>
           <input
@@ -322,7 +359,14 @@ export default function ControlPanel({
             opacity: globalDemandMode || selectedNode?.type === NodeType.CUSTOMER ? 1 : 0.5,
           }}
         >
-          <label style={{ display: "block", fontWeight: 600, fontSize: 18, marginBottom: 2 }}>
+          <label
+            style={{
+              display: "block",
+              fontWeight: 600,
+              fontSize: scaleNum(15),
+              marginBottom: scaleNum(4),
+            }}
+          >
             Demand variability: {num(currentSigma, 0)}
           </label>
           <input
@@ -339,14 +383,16 @@ export default function ControlPanel({
       </div>
 
       <div style={panelStyle()}>
-        <h2 style={{ marginTop: 0, fontSize: 24 }}>Toolbox</h2>
+        <h2 style={{ marginTop: 0, fontSize: scaleNum(22), marginBottom: scaleNum(14) }}>
+          Toolbox
+        </h2>
 
         <div
           style={{
-            fontSize: 13,
+            fontSize: scaleNum(13),
             color: THEME.colors.textMuted,
             lineHeight: 1.5,
-            marginBottom: 12,
+            marginBottom: scaleNum(12),
           }}
         >
           <div>
@@ -362,23 +408,30 @@ export default function ControlPanel({
 
         <div
           style={{
-            fontSize: 14,
+            fontSize: scaleNum(14),
             color: THEME.colors.textMuted,
-            background: THEME.colors.background,
+            background: THEME.colors.surfaceRow ?? THEME.colors.background,
             border: `1px solid ${THEME.colors.border}`,
             borderRadius: THEME.radius.sm,
-            padding: "8px 10px",
-            marginBottom: 12,
+            padding: `${scaleNum(8)}px ${scaleNum(10)}px`,
+            marginBottom: scaleNum(12),
             lineHeight: 1.45,
           }}
         >
           {tools.helper}
         </div>
 
-        <div style={{ fontSize: 13, fontWeight: 700, color: THEME.colors.textMuted, marginBottom: 8 }}>
+        <div
+          style={{
+            fontSize: scaleNum(13),
+            fontWeight: 700,
+            color: THEME.colors.textMuted,
+            marginBottom: scaleNum(8),
+          }}
+        >
           Series edits
         </div>
-        <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "grid", gap: scaleNum(8), marginBottom: scaleNum(14) }}>
           <ToolButton
             disabled={!tools.addUpstreamSupplier}
             onClick={() => addUpstreamNodeToSelected(NodeType.SUPPLIER)}
@@ -415,10 +468,17 @@ export default function ControlPanel({
           </ToolButton>
         </div>
 
-        <div style={{ fontSize: 13, fontWeight: 700, color: THEME.colors.textMuted, marginBottom: 8 }}>
+        <div
+          style={{
+            fontSize: scaleNum(13),
+            fontWeight: 700,
+            color: THEME.colors.textMuted,
+            marginBottom: scaleNum(8),
+          }}
+        >
           Redundancy and branching
         </div>
-        <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "grid", gap: scaleNum(8), marginBottom: scaleNum(14) }}>
           <ToolButton disabled={!tools.addParallelSupplier} onClick={addParallelSupplierToSelected}>
             + Add Parallel Supplier
           </ToolButton>
@@ -428,10 +488,17 @@ export default function ControlPanel({
           </ToolButton>
         </div>
 
-        <div style={{ fontSize: 13, fontWeight: 700, color: THEME.colors.textMuted, marginBottom: 8 }}>
+        <div
+          style={{
+            fontSize: scaleNum(13),
+            fontWeight: 700,
+            color: THEME.colors.textMuted,
+            marginBottom: scaleNum(8),
+          }}
+        >
           Edit and layout
         </div>
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gap: scaleNum(8) }}>
           <ToolButton
             disabled={!tools.removeSelectedNode}
             variant="danger"
@@ -447,9 +514,11 @@ export default function ControlPanel({
       </div>
 
       <div style={panelStyle()}>
-        <h2 style={{ marginTop: 0, fontSize: 22 }}>Connection Actions</h2>
-        <div style={{ display: "grid", gap: 10 }}>
-          <div style={{ fontSize: 14, color: THEME.colors.textMuted }}>
+        <h2 style={{ marginTop: 0, fontSize: scaleNum(20), marginBottom: scaleNum(12) }}>
+          Connection Actions
+        </h2>
+        <div style={{ display: "grid", gap: scaleNum(10) }}>
+          <div style={{ fontSize: scaleNum(14), color: THEME.colors.textMuted }}>
             Selected source: <b>{selectedNode?.name ?? "None"}</b>
           </div>
           <select
@@ -457,7 +526,7 @@ export default function ControlPanel({
             onChange={(e) => onConnectTargetIdChange(e.target.value)}
             style={{
               ...inputStyle(),
-              fontSize: 14,
+              fontSize: scaleNum(14),
             }}
           >
             <option value="">Choose target node</option>

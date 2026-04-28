@@ -6,14 +6,15 @@ import { NodeType } from "./model/networkTypes";
 import useSimulatorState from "./state/useSimulatorState";
 import { useAppMode } from "./state/appModeContext";
 import DashboardHeader from "./components/DashboardHeader";
-import AboutPage from "./components/AboutPage";
+import AboutPage from "./pages/AboutPage";
 import MetricCards from "./components/MetricCards";
-import ParametersModal from "./components/ParametersModal";
-import LearningModal from "./components/LearningModal";
-import LeaderboardModal from "./components/LeaderboardModal";
-import SaveScenarioModal from "./components/SaveScenarioModal";
-import RenameWorkspaceModal from "./components/RenameWorkspaceModal";
-import SupportPage from "./components/SupportPage";
+import ParametersModal from "./components/modals/ParametersModal";
+import LearningModal from "./components/modals/LearningModal";
+import LeaderboardModal from "./components/modals/LeaderboardModal";
+import SaveScenarioModal from "./components/modals/SaveScenarioModal";
+import RenameWorkspaceModal from "./components/modals/RenameWorkspaceModal";
+import ThemePickerModal from "./components/modals/ThemePickerModal";
+import SupportPage from "./pages/SupportPage";
 import GraphCanvas from "./components/GraphCanvas";
 import CostAccumulationView from "./components/CostAccumulationView";
 import BaselineComparisonPanel from "./components/BaselineComparisonPanel";
@@ -23,15 +24,22 @@ import NodeEditorPanel from "./components/NodeEditorPanel";
 import InsightPanel from "./components/InsightPanel";
 import DisruptionDeck from "./components/DisruptionDeck";
 import ActiveDisruptionBanner from "./components/ActiveDisruptionBanner";
-import CollapsibleSection from "./components/CollapsibleSection";
-import { cardStyle, money, num, riskColor } from "./components/formatters";
+import CollapsibleSection from "./ui/CollapsibleSection";
+import { cardStyle, money, num, riskColor } from "./ui/formatters";
 import { shuffleDeck, applyCard } from "./data/disruptionCards";
 import { applyTransportEffects } from "./sim/applyTransportEffects";
 import { applyLaneTransportCost } from "./sim/applyLaneTransportCost";
-import WelcomeModal from "./components/WelcomeModal";
+import WelcomeModal from "./components/modals/WelcomeModal";
 import { getAppModeConfig, getAppModeEntries } from "./config/appModes";
-import { THEME } from "./config/theme";
+import {
+  applyThemePalette,
+  DEFAULT_THEME_PALETTE,
+  THEME,
+  THEME_STORAGE_KEY,
+} from "./config/theme";
 import { applyBoundaryModesToNodes } from "./sim/graphHelpers";
+import useWindowSize from "./hooks/useWindowSize";
+import { scaleClamp, scaleNum } from "./theme/uiScale";
 
 const LOCATION_OPTIONS = [
   { value: "north_america", label: "North America" },
@@ -74,6 +82,20 @@ function nodesNeedBoundarySync(currentNodes, nextNodes) {
       Boolean(node.flags?.upstreamRetail) !== Boolean(nextNode.flags?.upstreamRetail)
     );
   });
+}
+
+function selectedPerNodeRowBackground() {
+  if (THEME.colors.background === "#0B1220") {
+    return "rgba(124,179,255,0.18)";
+  }
+
+  return "#eaf5ff";
+}
+
+function layoutTierFromWidth(width) {
+  if (width < 1100) return "small";
+  if (width <= 1600) return "medium";
+  return "large";
 }
 
 export default function App() {
@@ -137,6 +159,7 @@ export default function App() {
   const [isNodeEditorOpen, setIsNodeEditorOpen] = useState(false);
   const [isSaveScenarioOpen, setIsSaveScenarioOpen] = useState(false);
   const [isRenameWorkspaceOpen, setIsRenameWorkspaceOpen] = useState(false);
+  const [isThemePickerOpen, setIsThemePickerOpen] = useState(false);
   const [boundaryColumn, setBoundaryColumn] = useState(2);
   const [globalDemandMode, setGlobalDemandMode] = useState(true);
   const [autoInventoryType, setAutoInventoryType] = useState(true);
@@ -153,6 +176,24 @@ export default function App() {
   const [drawPile, setDrawPile] = useState(() => shuffleDeck());
   const [discardPile, setDiscardPile] = useState([]);
   const [viewMode, setViewMode] = useState("graph");
+  const [themeId, setThemeId] = useState(() => {
+    if (typeof window === "undefined") {
+      return applyThemePalette(DEFAULT_THEME_PALETTE);
+    }
+
+    try {
+      const storedThemeId = window.localStorage.getItem(THEME_STORAGE_KEY);
+      return applyThemePalette(storedThemeId || DEFAULT_THEME_PALETTE);
+    } catch {
+      return applyThemePalette(DEFAULT_THEME_PALETTE);
+    }
+  });
+  const windowSize = useWindowSize();
+  const layoutTier = layoutTierFromWidth(windowSize.width);
+  const isSmallLayout = layoutTier === "small";
+  const leftPanelWidth = "clamp(240px, 16vw, 300px)";
+  const rightPanelWidth = "clamp(240px, 16vw, 320px)";
+  const preferredGraphHeight = Math.max(500, Math.min(windowSize.height * 0.6, 900));
 
   const activeCard = discardPile.length ? discardPile[discardPile.length - 1] : null;
 
@@ -216,6 +257,18 @@ export default function App() {
       return nodesNeedBoundarySync(prevNodes, nextNodes) ? nextNodes : prevNodes;
     });
   }, [boundaryColumn, edges, nodes.length, setNodes]);
+
+  useEffect(() => {
+    const nextThemeId = applyThemePalette(themeId);
+
+    if (typeof window === "undefined") return;
+
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextThemeId);
+    } catch {
+      // Ignore storage failures and keep the current in-memory selection.
+    }
+  }, [themeId]);
 
   function handleLoadScenario(sampleScenario) {
     loadScenario(sampleScenario);
@@ -347,60 +400,77 @@ export default function App() {
   const simulatorView = (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(280px, 320px) minmax(0, 1fr)",
-        gap: "clamp(12px, 2vw, 18px)",
+        display: "flex",
+        gap: scaleClamp(12, 2, 24),
         alignItems: "start",
+        minWidth: 0,
+        flexWrap: isSmallLayout ? "wrap" : "nowrap",
       }}
     >
-      <ControlPanel
-        selectedNode={selectedNode}
-        selectedEdge={selectedEdge}
-        selectedNodeId={selectedNodeId}
-        nodes={nodes}
-        serviceLevel={serviceLevel}
-        serviceLevelIndex={serviceLevelIndex}
-        supportedServiceLevels={supportedServiceLevels}
-        onServiceLevelIndexChange={setServiceLevelIndex}
-        boundaryColumn={boundaryColumn}
-        boundaryOptions={BOUNDARY_OPTIONS}
-        onBoundaryChange={applyGlobalBoundary}
-        globalDemandMode={globalDemandMode}
-        onGlobalDemandModeChange={setGlobalDemandMode}
-        autoInventoryType={autoInventoryType}
-        onAutoInventoryTypeChange={setAutoInventoryType}
-        baselineEnabled={baselineEnabled}
-        onBaselineEnabledChange={setBaselineEnabled}
-        showCoaching={showCoaching}
-        coachingEnabled={coachingEnabled}
-        onCoachingEnabledChange={setCoachingEnabled}
-        activeCustomer={activeCustomer}
-        currentMu={currentMu}
-        currentSigma={currentSigma}
-        onCustomerDemandChange={handleCustomerDemandChange}
-        addParallelSupplierToSelected={addParallelSupplierToSelected}
-        addBranchCustomerFromSelected={addBranchCustomerFromSelected}
-        addUpstreamNodeToSelected={addUpstreamNodeToSelected}
-        addDownstreamNodeFromSelected={addDownstreamNodeFromSelected}
-        removeSelectedNode={removeSelectedNode}
-        autoLayout={autoLayout}
-        connectTargetId={connectTargetId}
-        onConnectTargetIdChange={setConnectTargetId}
-        onConnectSelected={handleConnectSelected}
-        onRemoveSelectedEdge={removeSelectedEdge}
-      />
+      <div
+        style={{
+          flex: isSmallLayout ? "1 1 100%" : `0 0 ${leftPanelWidth}`,
+          width: leftPanelWidth,
+          minWidth: 240,
+          maxWidth: isSmallLayout ? "100%" : leftPanelWidth,
+        }}
+      >
+        <ControlPanel
+          selectedNode={selectedNode}
+          selectedEdge={selectedEdge}
+          selectedNodeId={selectedNodeId}
+          nodes={nodes}
+          serviceLevel={serviceLevel}
+          serviceLevelIndex={serviceLevelIndex}
+          supportedServiceLevels={supportedServiceLevels}
+          onServiceLevelIndexChange={setServiceLevelIndex}
+          boundaryColumn={boundaryColumn}
+          boundaryOptions={BOUNDARY_OPTIONS}
+          onBoundaryChange={applyGlobalBoundary}
+          globalDemandMode={globalDemandMode}
+          onGlobalDemandModeChange={setGlobalDemandMode}
+          autoInventoryType={autoInventoryType}
+          onAutoInventoryTypeChange={setAutoInventoryType}
+          baselineEnabled={baselineEnabled}
+          onBaselineEnabledChange={setBaselineEnabled}
+          showCoaching={showCoaching}
+          coachingEnabled={coachingEnabled}
+          onCoachingEnabledChange={setCoachingEnabled}
+          activeCustomer={activeCustomer}
+          currentMu={currentMu}
+          currentSigma={currentSigma}
+          onCustomerDemandChange={handleCustomerDemandChange}
+          addParallelSupplierToSelected={addParallelSupplierToSelected}
+          addBranchCustomerFromSelected={addBranchCustomerFromSelected}
+          addUpstreamNodeToSelected={addUpstreamNodeToSelected}
+          addDownstreamNodeFromSelected={addDownstreamNodeFromSelected}
+          removeSelectedNode={removeSelectedNode}
+          autoLayout={autoLayout}
+          connectTargetId={connectTargetId}
+          onConnectTargetIdChange={setConnectTargetId}
+          onConnectSelected={handleConnectSelected}
+          onRemoveSelectedEdge={removeSelectedEdge}
+        />
+      </div>
 
-      <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
+      <div style={{ display: "grid", gap: scaleNum(16), minWidth: 0, flex: "1 1 auto" }}>
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) minmax(280px, 320px)",
-            gap: "clamp(12px, 2vw, 18px)",
+            display: "flex",
+            flexDirection: isSmallLayout ? "column" : "row",
+            gap: scaleClamp(12, 2, 24),
             alignItems: "start",
             minWidth: 0,
           }}
         >
-          <div style={{ minWidth: 0, display: "grid", gap: 10 }}>
+          <div
+            style={{
+              minWidth: 0,
+              display: "grid",
+              gap: scaleNum(10),
+              flex: "1 1 auto",
+            }}
+          >
             <GraphCanvas
               title={supplyChainName}
               nodes={nodes}
@@ -432,16 +502,27 @@ export default function App() {
               onOpenNodeEditor={openNodeEditor}
               onOpenLaneEditor={() => setIsLaneEditorOpen(true)}
               onEditTitle={handleEditSupplyChainName}
+              preferredViewportHeight={preferredGraphHeight}
             />
           </div>
 
-          <DisruptionDeck
-            drawPile={drawPile}
-            discardPile={discardPile}
-            activeCard={activeCard}
-            onDraw={handleDraw}
-            onReset={handleResetDeck}
-          />
+          <div
+            style={{
+              flex: isSmallLayout ? "1 1 auto" : `0 0 ${rightPanelWidth}`,
+              width: rightPanelWidth,
+              minWidth: 240,
+              maxWidth: isSmallLayout ? "100%" : rightPanelWidth,
+            }}
+          >
+            <DisruptionDeck
+              drawPile={drawPile}
+              discardPile={discardPile}
+              activeCard={activeCard}
+              onDraw={handleDraw}
+              onReset={handleResetDeck}
+              layoutTier={layoutTier}
+            />
+          </div>
         </div>
 
         {activeCard && (
@@ -451,7 +532,7 @@ export default function App() {
           />
         )}
 
-        {result && <MetricCards result={result} />}
+        {result && <MetricCards result={result} layoutTier={layoutTier} />}
 
         {result && baselineEnabled && (
           <BaselineComparisonPanel
@@ -462,18 +543,20 @@ export default function App() {
         )}
 
         {result && showCoaching && coachingEnabled && (
-          <InsightPanel
-            enabled={coachingEnabled}
-            onToggleEnabled={setCoachingEnabled}
-            currentResult={result}
-            baselineResult={baselineResult}
-            currentNodes={effectiveScenario.nodes}
-            baselineNodes={baselineNodes}
-            currentEdges={effectiveScenario.edges}
-            baselineEdges={baselineEdges}
-            currentBoundaryColumn={boundaryColumn}
-            baselineBoundaryColumn={baselineBoundaryColumn}
-          />
+          <div style={{ width: "100%", margin: 0 }}>
+            <InsightPanel
+              enabled={coachingEnabled}
+              onToggleEnabled={setCoachingEnabled}
+              currentResult={result}
+              baselineResult={baselineResult}
+              currentNodes={effectiveScenario.nodes}
+              baselineNodes={baselineNodes}
+              currentEdges={effectiveScenario.edges}
+              baselineEdges={baselineEdges}
+              currentBoundaryColumn={boundaryColumn}
+              baselineBoundaryColumn={baselineBoundaryColumn}
+            />
+          </div>
         )}
 
         {!graphValidation.isValid && (
@@ -556,7 +639,8 @@ export default function App() {
                   <tr
                     key={r.id}
                     style={{
-                      background: r.id === selectedNodeId ? "#eaf5ff" : "transparent",
+                      background:
+                        r.id === selectedNodeId ? selectedPerNodeRowBackground() : "transparent",
                     }}
                   >
                     <td>{r.name}</td>
@@ -624,8 +708,9 @@ export default function App() {
   return (
     <div
       style={{
-        padding: "clamp(10px, 2vw, 18px)",
+        padding: scaleClamp(10, 1.6, 22),
         fontFamily: "system-ui, sans-serif",
+        fontSize: scaleNum(14),
         background: THEME.colors.background,
         minHeight: "100vh",
         color: THEME.colors.textPrimary,
@@ -633,7 +718,7 @@ export default function App() {
         width: "100%",
       }}
     >
-      <div style={{ width: "100%", margin: 0 }}>
+      <div style={{ width: "100%", maxWidth: "none", margin: 0, boxSizing: "border-box" }}>
         <DashboardHeader
           subtitle={modeConfig.labels?.headerSubtitle}
           modeLabel={modeConfig.shortLabel}
@@ -644,270 +729,12 @@ export default function App() {
           onOpenParameters={showAdvancedControls ? openParameters : undefined}
           onOpenLearning={openLearning}
           onOpenLeaderboard={openLeaderboard}
+          onOpenThemePicker={() => setIsThemePickerOpen(true)}
           onResetScenario={handleResetScenario}
         />
 
         {currentView === "simulator" ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "310px minmax(0, 1fr)",
-            gap: 16,
-            alignItems: "start",
-          }}
-        >
-          <ControlPanel
-            selectedNode={selectedNode}
-            selectedEdge={selectedEdge}
-            selectedNodeId={selectedNodeId}
-            nodes={nodes}
-            serviceLevel={serviceLevel}
-            serviceLevelIndex={serviceLevelIndex}
-            supportedServiceLevels={supportedServiceLevels}
-            onServiceLevelIndexChange={setServiceLevelIndex}
-            boundaryColumn={boundaryColumn}
-            boundaryOptions={BOUNDARY_OPTIONS}
-            onBoundaryChange={applyGlobalBoundary}
-            globalDemandMode={globalDemandMode}
-            onGlobalDemandModeChange={setGlobalDemandMode}
-            autoInventoryType={autoInventoryType}
-            onAutoInventoryTypeChange={setAutoInventoryType}
-            baselineEnabled={baselineEnabled}
-            onBaselineEnabledChange={setBaselineEnabled}
-            showCoaching={showCoaching}
-            coachingEnabled={coachingEnabled}
-            onCoachingEnabledChange={setCoachingEnabled}
-            activeCustomer={activeCustomer}
-            currentMu={currentMu}
-            currentSigma={currentSigma}
-            onCustomerDemandChange={handleCustomerDemandChange}
-            addParallelSupplierToSelected={addParallelSupplierToSelected}
-            addBranchCustomerFromSelected={addBranchCustomerFromSelected}
-            addUpstreamNodeToSelected={addUpstreamNodeToSelected}
-            addDownstreamNodeFromSelected={addDownstreamNodeFromSelected}
-            removeSelectedNode={removeSelectedNode}
-            autoLayout={autoLayout}
-            connectTargetId={connectTargetId}
-            onConnectTargetIdChange={setConnectTargetId}
-            onConnectSelected={handleConnectSelected}
-            onRemoveSelectedEdge={removeSelectedEdge}
-          />
-
-          <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr) 300px",
-                gap: 16,
-                alignItems: "start",
-                minWidth: 0,
-              }}
-            >
-              <div style={{ minWidth: 0, display: "grid", gap: 10 }}>
-                <GraphCanvas
-                  title={supplyChainName}
-                  nodes={nodes}
-                  edges={edges}
-                  result={result}
-                  boundaryColumn={boundaryColumn}
-                  autoInventoryType={autoInventoryType}
-                  selectedNodeId={selectedNodeId}
-                  selectedEdgeId={selectedEdgeId}
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
-                  costView={
-                    <CostAccumulationView
-                      nodes={nodes}
-                      edges={transformedEdges}
-                      result={result}
-                      embedded
-                    />
-                  }
-                  onSelectNode={(nodeId) => {
-                    setSelectedNodeId(nodeId);
-                    setSelectedEdgeId(null);
-                  }}
-                  onSelectEdge={(edgeId) => {
-                    setSelectedEdgeId(edgeId);
-                  }}
-                  onAutoLayout={autoLayout}
-                  onMoveNode={moveNode}
-                  onOpenNodeEditor={openNodeEditor}
-                  onOpenLaneEditor={() => setIsLaneEditorOpen(true)}
-                  onEditTitle={handleEditSupplyChainName}
-                />
-              </div>
-
-              <DisruptionDeck
-                drawPile={drawPile}
-                discardPile={discardPile}
-                activeCard={activeCard}
-                onDraw={handleDraw}
-                onReset={handleResetDeck}
-              />
-            </div>
-
-            {activeCard && (
-              <ActiveDisruptionBanner
-                activeCard={activeCard}
-                onClear={handleClearActiveDisruption}
-              />
-            )}
-
-            {result && <MetricCards result={result} />}
-
-            {result && baselineEnabled && (
-              <BaselineComparisonPanel
-                current={result}
-                baseline={baselineResult}
-                onPinBaseline={handlePinBaseline}
-              />
-            )}
-
-            {result && showCoaching && coachingEnabled && (
-              <InsightPanel
-                enabled={coachingEnabled}
-                onToggleEnabled={setCoachingEnabled}
-                currentResult={result}
-                baselineResult={baselineResult}
-                currentNodes={effectiveScenario.nodes}
-                baselineNodes={baselineNodes}
-                currentEdges={effectiveScenario.edges}
-                baselineEdges={baselineEdges}
-                currentBoundaryColumn={boundaryColumn}
-                baselineBoundaryColumn={baselineBoundaryColumn}
-              />
-            )}
-
-            {!graphValidation.isValid && (
-              <div
-                style={{
-                  ...cardStyle(),
-                  border: `1px solid ${THEME.colors.danger}`,
-                  background: THEME.colors.surface,
-                }}
-              >
-                <h2 style={{ marginTop: 0, color: THEME.colors.danger }}>Graph Validation Issues</h2>
-                <ul style={{ marginBottom: 0 }}>
-                  {graphValidation.errors.map((err, idx) => (
-                    <li key={idx}>{err}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {simulationError && (
-              <div
-                style={{
-                  ...cardStyle(),
-                  border: `1px solid ${THEME.colors.danger}`,
-                  background: THEME.colors.surface,
-                }}
-              >
-                <h2 style={{ marginTop: 0, color: THEME.colors.danger }}>Simulation Error</h2>
-                <div style={{ marginBottom: 8 }}>
-                  {simulationError?.message ?? "Unknown simulation error"}
-                </div>
-                <div style={{ color: THEME.colors.textMuted }}>
-                  The app kept running, but the current network arrangement could not be
-                  evaluated. Try checking lane directions, removing cycles, or resetting the scenario.
-                </div>
-              </div>
-            )}
-
-            <CollapsibleSection
-              title="Per-Node View"
-              isOpen={isTableOpen}
-              onToggle={() => setIsTableOpen((prev) => !prev)}
-            >
-              <div style={{ overflowX: "auto" }}>
-                <table
-                  border="1"
-                  cellPadding="6"
-                  style={{
-                    borderCollapse: "collapse",
-                    width: "100%",
-                    background: THEME.colors.surface,
-                  }}
-                >
-                  <thead style={{ background: THEME.colors.background }}>
-                    <tr>
-                      <th>Node</th>
-                      <th>Type</th>
-                      <th>Mode</th>
-                      <th>Stock Form</th>
-                      <th>Location</th>
-                      <th>μ</th>
-                      <th>σ</th>
-                      <th>L</th>
-                      <th>s</th>
-                      <th>R</th>
-                      <th>Stage Time</th>
-                      <th>Response Time</th>
-                      <th>PS</th>
-                      <th>SS</th>
-                      {showDetailedCost ? <th>Unit $</th> : null}
-                      {showDetailedCost ? <th>Pipeline $</th> : null}
-                      {showDetailedCost ? <th>Safety Stock $</th> : null}
-                      {showDetailedCost ? <th>Node Added $</th> : null}
-                      {showDetailedCost ? <th>Total $</th> : null}
-                      <th>Risk</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(result?.perNode ?? []).map((r) => (
-                      <tr
-                        key={r.id}
-                        style={{
-                          background: r.id === selectedNodeId ? "#eaf5ff" : "transparent",
-                        }}
-                      >
-                        <td>{r.name}</td>
-                        <td>{r.type}</td>
-                        <td>{r.mode}</td>
-                        <td>{r.inventoryType}</td>
-                        <td>{r.location}</td>
-                        <td>{num(r.mu)}</td>
-                        <td>{num(r.sigma)}</td>
-                        <td>{num(r.L)}</td>
-                        <td>{num(r.s)}</td>
-                        <td>{num(r.R)}</td>
-                        <td>{num(r.stageTimeDays, 1)}</td>
-                        <td>{num(r.responseTimeDays, 1)}</td>
-                        <td>{num(r.PS)}</td>
-                        <td>{num(r.SS)}</td>
-                        {showDetailedCost ? <td>{money(r.unitValue)}</td> : null}
-                        {showDetailedCost ? <td>{money(r.PSValue)}</td> : null}
-                        {showDetailedCost ? <td>{money(r.SSValue)}</td> : null}
-                        {showDetailedCost ? <td>{money(r.nodeAddedCost)}</td> : null}
-                        {showDetailedCost ? <td>{money(r.totalValue)}</td> : null}
-                        <td
-                          style={{
-                            color: riskColor(r.riskLabel),
-                            fontWeight: 700,
-                          }}
-                        >
-                          {r.riskLabel} ({num(r.riskScore, 2)})
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CollapsibleSection>
-
-            <LaneEditorPanel
-              isOpen={isLaneEditorOpen}
-              onToggle={() => setIsLaneEditorOpen((prev) => !prev)}
-              nodes={nodes}
-              edges={edges}
-              selectedEdge={selectedEdge}
-              selectedEdgeId={selectedEdgeId}
-              onSelectEdge={setSelectedEdgeId}
-              onUpdateLane={updateLane}
-            />
-          </div>
-        </div>
+          simulatorView
         ) : currentView === "about" ? (
           aboutView
         ) : (
@@ -980,6 +807,14 @@ export default function App() {
         onClose={handleCloseRenameWorkspace}
         onSave={handleSaveSupplyChainName}
       />
+
+      <ThemePickerModal
+        isOpen={isThemePickerOpen}
+        activeThemeId={themeId}
+        onSelectTheme={setThemeId}
+        onClose={() => setIsThemePickerOpen(false)}
+      />
     </div>
   );
 }
+

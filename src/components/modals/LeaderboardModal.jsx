@@ -1,6 +1,6 @@
 // src/components/LeaderboardModal.jsx
 
-import ModalShell from "./ModalShell";
+import ModalShell from "../../ui/ModalShell";
 
 function money(x) {
   return Number(x || 0).toLocaleString(undefined, {

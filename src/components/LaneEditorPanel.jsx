@@ -6,8 +6,8 @@ import {
   getAllowedTransportTypesForNodes,
   getTransportRestrictionNote,
 } from "../sim/laneGeography";
-import CollapsibleSection from "./CollapsibleSection";
-import { buttonStyle } from "./formatters";
+import CollapsibleSection from "../ui/CollapsibleSection";
+import { buttonStyle, inputStyle } from "../ui/formatters";
 
 function edgeSummary(edge, nodes) {
   if (!edge) return "No lane selected";
@@ -27,6 +27,12 @@ export default function LaneEditorPanel({
   onUpdateLane,
 }) {
   const transportOptions = Object.entries(TRANSPORT_TYPES);
+  const tableCellStyle = {
+    border: `1px solid ${THEME.colors.border}`,
+    padding: 8,
+    color: THEME.colors.textPrimary,
+    verticalAlign: "top",
+  };
 
   return (
     <CollapsibleSection
@@ -37,29 +43,28 @@ export default function LaneEditorPanel({
     >
       <div style={{ overflowX: "auto" }}>
         <table
-          border="1"
-          cellPadding="8"
           style={{
             borderCollapse: "collapse",
             width: "100%",
-            background: THEME.colors.surface,
+            minWidth: 900,
+            background: THEME.colors.surfaceRow ?? THEME.colors.surface,
           }}
         >
-          <thead style={{ background: THEME.colors.background }}>
+          <thead style={{ background: THEME.colors.surfacePanel ?? THEME.colors.background }}>
             <tr>
-              <th>Pick</th>
-              <th>From</th>
-              <th>To</th>
-              <th>LT (days)</th>
-              <th>Sigma (days)</th>
-              <th>R (days)</th>
-              <th>BOM</th>
-              <th>Transport Type</th>
-              <th>Outsource (3PL)</th>
+              <th style={tableCellStyle}>Pick</th>
+              <th style={tableCellStyle}>From</th>
+              <th style={tableCellStyle}>To</th>
+              <th style={tableCellStyle}>LT (days)</th>
+              <th style={tableCellStyle}>Sigma (days)</th>
+              <th style={tableCellStyle}>R (days)</th>
+              <th style={tableCellStyle}>BOM</th>
+              <th style={tableCellStyle}>Transport Type</th>
+              <th style={tableCellStyle}>Outsource (3PL)</th>
             </tr>
           </thead>
           <tbody>
-            {edges.map((edge) => {
+            {edges.map((edge, index) => {
               const fromNode = nodes.find((node) => node.id === edge.from) ?? null;
               const toNode = nodes.find((node) => node.id === edge.to) ?? null;
               const allowedTransportTypes = getAllowedTransportTypesForNodes(fromNode, toNode);
@@ -72,54 +77,59 @@ export default function LaneEditorPanel({
                 <tr
                   key={edge.id}
                   style={{
-                    background: edge.id === selectedEdgeId ? "#eaf5ff" : "transparent",
+                    background:
+                      edge.id === selectedEdgeId
+                        ? THEME.colors.hover ?? THEME.colors.background
+                        : index % 2 === 0
+                          ? THEME.colors.surfaceRow ?? THEME.colors.surface
+                          : THEME.colors.surfacePanel ?? THEME.colors.background,
                   }}
                 >
-                  <td>
+                  <td style={tableCellStyle}>
                     <button onClick={() => onSelectEdge(edge.id)} style={buttonStyle()} type="button">
                       Select
                     </button>
                   </td>
-                  <td>{fromNode?.name ?? edge.from}</td>
-                  <td>{toNode?.name ?? edge.to}</td>
-                  <td>
+                  <td style={tableCellStyle}>{fromNode?.name ?? edge.from}</td>
+                  <td style={tableCellStyle}>{toNode?.name ?? edge.to}</td>
+                  <td style={tableCellStyle}>
                     <input
                       type="number"
                       value={edge.L}
                       onChange={(e) => onUpdateLane(edge.id, "L", e.target.value)}
-                      style={{ width: 110, minHeight: 42, fontSize: 18, padding: "6px 10px" }}
+                      style={{ ...inputStyle(), width: "clamp(50px, 6vw, 90px)", minHeight: 40, fontSize: 16 }}
                     />
                   </td>
-                  <td>
+                  <td style={tableCellStyle}>
                     <input
                       type="number"
                       value={edge.s}
                       step="0.1"
                       onChange={(e) => onUpdateLane(edge.id, "s", e.target.value)}
-                      style={{ width: 110, minHeight: 42, fontSize: 18, padding: "6px 10px" }}
+                      style={{ ...inputStyle(), width: "clamp(50px, 6vw, 90px)", minHeight: 40, fontSize: 16 }}
                     />
                   </td>
-                  <td>
+                  <td style={tableCellStyle}>
                     <input
                       type="number"
                       value={edge.R}
                       onChange={(e) => onUpdateLane(edge.id, "R", e.target.value)}
-                      style={{ width: 110, minHeight: 42, fontSize: 18, padding: "6px 10px" }}
+                      style={{ ...inputStyle(), width: "clamp(50px, 6vw, 90px)", minHeight: 40, fontSize: 16 }}
                     />
                   </td>
-                  <td>
+                  <td style={tableCellStyle}>
                     <input
                       type="number"
                       value={edge.bom}
                       onChange={(e) => onUpdateLane(edge.id, "bom", e.target.value)}
-                      style={{ width: 110, minHeight: 42, fontSize: 18, padding: "6px 10px" }}
+                      style={{ ...inputStyle(), width: "clamp(50px, 6vw, 90px)", minHeight: 40, fontSize: 16 }}
                     />
                   </td>
-                  <td>
+                  <td style={tableCellStyle}>
                     <select
                       value={edge.transportType ?? "truck"}
                       onChange={(e) => onUpdateLane(edge.id, "transportType", e.target.value)}
-                      style={{ width: 150, minHeight: 42, fontSize: 16, padding: "6px 10px" }}
+                      style={{ ...inputStyle(), width: "clamp(120px, 12vw, 160px)", minHeight: 40, fontSize: 15 }}
                       title={restrictionNote ?? undefined}
                     >
                       {availableTransportOptions.map(([value, transport]) => (
@@ -135,7 +145,7 @@ export default function LaneEditorPanel({
                           marginTop: 6,
                           fontSize: 12,
                           lineHeight: 1.35,
-                          color: THEME.colors.textMuted,
+                          color: THEME.colors.secondary,
                           maxWidth: 220,
                         }}
                       >
@@ -143,7 +153,7 @@ export default function LaneEditorPanel({
                       </div>
                     ) : null}
                   </td>
-                  <td>
+                  <td style={tableCellStyle}>
                     <label
                       style={{
                         display: "flex",

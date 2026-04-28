@@ -1,6 +1,6 @@
-import ModalShell from "./ModalShell";
-import { buttonStyle, inputStyle } from "./formatters";
-import { THEME } from "../config/theme";
+import ModalShell from "../../ui/ModalShell";
+import { buttonStyle, inputStyle } from "../../ui/formatters";
+import { THEME } from "../../config/theme";
 
 export default function SaveScenarioModal({
   isOpen,

@@ -1,9 +1,9 @@
 // src/components/LearningModal.jsx
 
-import ModalShell from "./ModalShell";
-import { sampleScenarios } from "../data/sampleScenarios";
-import { useAppMode } from "../state/appModeContext";
-import { THEME } from "../config/theme";
+import ModalShell from "../../ui/ModalShell";
+import { sampleScenarios } from "../../data/sampleScenarios";
+import { useAppMode } from "../../state/appModeContext";
+import { THEME } from "../../config/theme";
 
 function sectionStyle() {
   return {

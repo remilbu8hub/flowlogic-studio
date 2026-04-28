@@ -1,25 +1,26 @@
 // src/components/GraphCanvas.jsx
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Boxes, Cog, PackageCheck, Pencil, Wrench } from "lucide-react";
 import { THEME } from "../config/theme";
 import { getTransportTypeConfig } from "../config/transportTypes";
 import { NodeType } from "../model/networkTypes";
 import { graphLayers } from "../sim/graphHelpers";
-import { riskColor } from "./formatters";
+import { scaleMin, scaleNum } from "../theme/uiScale";
+import { riskColor } from "../ui/formatters";
 
 const GRID = 40;
-const NODE_WIDTH = 216;
-const NODE_HEIGHT = 112;
+const NODE_WIDTH = scaleMin(216, 208);
+const NODE_HEIGHT = scaleMin(112, 108);
 const STAGE_X_STEP = 420;
 const MIN_CANVAS_WIDTH = 2400;
 const MIN_CANVAS_HEIGHT = 900;
 const MIN_VIEWPORT_HEIGHT = 420;
 const MAX_VIEWPORT_HEIGHT = 1200;
-const BOUNDARY_LABEL_WIDTH = 110;
-const BOUNDARY_LABEL_HEIGHT = 24;
-const BOUNDARY_SKIP_PADDING = 10;
-const HORIZONTAL_BAND_OFFSET = 100;
+const BOUNDARY_LABEL_WIDTH = scaleNum(110);
+const BOUNDARY_LABEL_HEIGHT = scaleNum(24);
+const BOUNDARY_SKIP_PADDING = scaleNum(10);
+const HORIZONTAL_BAND_OFFSET = scaleNum(120);
 
 function nodeTypeLabel(type) {
   if (type === NodeType.SUPPLIER) return "Supplier";
@@ -40,7 +41,7 @@ function stageRank(type) {
 }
 
 function stageColumnX(stage) {
-  return 100 + stage * STAGE_X_STEP;
+  return 120 + stage * STAGE_X_STEP;
 }
 
 function stageColumnCenterX(stage) {
@@ -60,6 +61,15 @@ function nodeModeValue(node) {
 }
 
 function nodeColor(type) {
+  if (THEME.colors.background === "#0B1220") {
+    if (type === NodeType.SUPPLIER) return "#182633";
+    if (type === NodeType.FACTORY) return "#1B3142";
+    if (type === NodeType.DC) return "#2F2C3A";
+    if (type === NodeType.RETAIL) return "#2F3227";
+    if (type === NodeType.CUSTOMER) return "#252E3C";
+    return THEME.colors.surface;
+  }
+
   if (type === NodeType.SUPPLIER) return "#dff3df";
   if (type === NodeType.FACTORY) return "#dceeff";
   if (type === NodeType.DC) return "#ffe6d6";
@@ -126,12 +136,12 @@ function badgeStyle({
   return {
     display: "inline-flex",
     alignItems: "center",
-    gap: 5,
-    minHeight: 22,
+    gap: scaleNum(5),
+    minHeight: scaleMin(22, 22),
     maxWidth: "100%",
-    padding: "3px 8px",
+    padding: `${scaleNum(3)}px ${scaleNum(8)}px`,
     borderRadius: 999,
-    fontSize: 11,
+    fontSize: scaleMin(11, 11),
     fontWeight: 700,
     color: textColor,
     background,
@@ -177,10 +187,14 @@ function getEdgePath(fromNode, toNode) {
 }
 
 function gridBackground() {
+  const lineColor =
+    THEME.colors.background === "#0B1220" ? "rgba(229,231,235,0.08)" : "rgba(31,35,40,0.06)";
+
   return {
+    backgroundColor: THEME.colors.surfacePanel ?? THEME.colors.surface,
     backgroundImage: `
-      linear-gradient(to right, rgba(31,35,40,0.06) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(31,35,40,0.06) 1px, transparent 1px)
+      linear-gradient(to right, ${lineColor} 1px, transparent 1px),
+      linear-gradient(to bottom, ${lineColor} 1px, transparent 1px)
     `,
     backgroundSize: `${GRID}px ${GRID}px`,
     backgroundPosition: "0 0",
@@ -254,8 +268,8 @@ function segmentedButtonStyle(isActive) {
     background: isActive ? THEME.colors.primary : "transparent",
     color: isActive ? THEME.colors.surface : THEME.colors.textMuted,
     borderRadius: THEME.radius.sm,
-    padding: "8px 12px",
-    fontSize: 13,
+    padding: `${scaleMin(7, 6)}px ${scaleMin(10, 10)}px`,
+    fontSize: scaleMin(12, 12),
     fontWeight: 700,
     cursor: "pointer",
     whiteSpace: "nowrap",
@@ -360,12 +374,16 @@ export default function GraphCanvas({
   onOpenNodeEditor,
   onOpenLaneEditor,
   onEditTitle,
+  preferredViewportHeight,
 }) {
   const scrollRef = useRef(null);
   const dragRef = useRef(null);
   const resizeRef = useRef(null);
+  const hasManualResizeRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState(760);
+  const [viewportHeight, setViewportHeight] = useState(
+    clampHeight(preferredViewportHeight ?? 760)
+  );
 
   const levels = useMemo(() => graphLayers(nodes, edges), [nodes, edges]);
   const size = useMemo(() => canvasSize(nodes), [nodes]);
@@ -374,6 +392,11 @@ export default function GraphCanvas({
     return computeBoundaryLineSegments(nodes, edges, boundaryX, 120, size.height - 120);
   }, [nodes, edges, boundaryX, size.height]);
   const isGraphView = viewMode === "graph";
+
+  useEffect(() => {
+    if (preferredViewportHeight == null || hasManualResizeRef.current) return;
+    setViewportHeight(clampHeight(preferredViewportHeight));
+  }, [preferredViewportHeight]);
 
   function handlePointerDown(event, node) {
     if (!onMoveNode || !isGraphView) return;
@@ -441,6 +464,7 @@ export default function GraphCanvas({
   function handleResizePointerMove(event) {
     if (!resizeRef.current) return;
     const deltaY = event.clientY - resizeRef.current.startY;
+    hasManualResizeRef.current = true;
     setViewportHeight(clampHeight(resizeRef.current.startHeight + deltaY));
   }
 
@@ -475,7 +499,7 @@ export default function GraphCanvas({
       style={{
         border: `1px solid ${THEME.colors.border}`,
         borderRadius: THEME.radius.lg,
-        padding: 12,
+        padding: scaleNum(10),
         background: THEME.colors.surface,
         boxShadow: THEME.shadow.card,
         display: "flex",
@@ -485,25 +509,27 @@ export default function GraphCanvas({
       }}
     >
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 16,
-          marginBottom: 10,
-          flexWrap: "wrap",
-        }}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: scaleNum(14),
+            marginBottom: scaleNum(8),
+            flexWrap: "wrap",
+          }}
       >
         <div>
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: scaleNum(10),
               flexWrap: "wrap",
             }}
           >
-            <h2 style={{ margin: 0, color: THEME.colors.textPrimary }}>{title}</h2>
+            <h2 style={{ margin: 0, color: THEME.colors.textPrimary, fontSize: scaleNum(22) }}>
+              {title}
+            </h2>
             <button
               type="button"
               onClick={onEditTitle}
@@ -513,8 +539,8 @@ export default function GraphCanvas({
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: 34,
-                height: 34,
+                width: scaleMin(34, 34),
+                height: scaleMin(34, 34),
                 borderRadius: THEME.radius.md,
                 border: `1px solid ${THEME.colors.border}`,
                 background: THEME.colors.surface,
@@ -523,24 +549,39 @@ export default function GraphCanvas({
                 flexShrink: 0,
               }}
             >
-              <Pencil size={16} strokeWidth={2} aria-hidden="true" />
+              <Pencil size={scaleMin(16, 16)} strokeWidth={2} aria-hidden="true" />
             </button>
           </div>
-          <p style={{ marginTop: 8, marginBottom: 0, color: THEME.colors.textMuted }}>
+          <p
+            style={{
+              marginTop: scaleNum(6),
+              marginBottom: 0,
+              color: THEME.colors.textMuted,
+              fontSize: scaleNum(13),
+              lineHeight: 1.45,
+            }}
+          >
             {isGraphView
               ? "Drag nodes to reposition them within their allowed stage band. Double click a node to edit it. Click a lane to inspect it."
               : "Review cumulative cost buildup in supply chain order without leaving the canvas workspace."}
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: scaleNum(12),
+            flexWrap: "wrap",
+          }}
+        >
           <div
             style={{
               display: "inline-flex",
-              gap: 4,
-              padding: 4,
+              gap: scaleNum(4),
+              padding: scaleNum(4),
               borderRadius: THEME.radius.md,
-              background: THEME.colors.background,
+              background: THEME.colors.surfacePanel ?? THEME.colors.background,
               border: `1px solid ${THEME.colors.border}`,
             }}
           >
@@ -568,8 +609,8 @@ export default function GraphCanvas({
               background: THEME.colors.primary,
               color: THEME.colors.surface,
               borderRadius: THEME.radius.md,
-              padding: "10px 14px",
-              fontSize: 14,
+              padding: `${scaleMin(8, 6)}px ${scaleMin(12, 10)}px`,
+              fontSize: scaleMin(13, 12),
               fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -701,7 +742,7 @@ export default function GraphCanvas({
                         x={labelTextX}
                         y={path.midY + 4}
                         textAnchor="middle"
-                        fontSize="11"
+                        fontSize={scaleNum(11)}
                         fontWeight="700"
                         fill="transparent"
                         style={{ pointerEvents: "none", userSelect: "none" }}
@@ -712,7 +753,7 @@ export default function GraphCanvas({
                         x={labelTextX}
                         y={path.midY + 4}
                         textAnchor="middle"
-                        fontSize="11"
+                        fontSize={scaleNum(11)}
                         fontWeight="700"
                         fill={THEME.colors.textPrimary}
                         style={{ pointerEvents: "none", userSelect: "none" }}
@@ -735,7 +776,7 @@ export default function GraphCanvas({
                             x={labelX + labelWidth - 26}
                             y={path.midY + 4}
                             textAnchor="middle"
-                            fontSize="10"
+                            fontSize={scaleNum(10)}
                             fontWeight="700"
                             fill={transportColor}
                           >
@@ -774,7 +815,7 @@ export default function GraphCanvas({
                     x={boundaryX}
                     y={34}
                     textAnchor="middle"
-                    fontSize="12"
+                    fontSize={scaleNum(12)}
                     fontWeight="700"
                     fill={THEME.colors.textPrimary}
                   >
@@ -824,7 +865,7 @@ export default function GraphCanvas({
                         ? `3px solid ${THEME.colors.primary}`
                         : `2px solid ${THEME.colors.secondary}`,
                       background: nodeColor(node.type),
-                      padding: 12,
+                      padding: scaleNum(12),
                       textAlign: "left",
                       cursor: isDragging && isSelected ? "grabbing" : "grab",
                       color: THEME.colors.textPrimary,
@@ -832,7 +873,7 @@ export default function GraphCanvas({
                       userSelect: "none",
                       display: "flex",
                       flexDirection: "column",
-                      gap: 8,
+                      gap: scaleNum(8),
                       overflow: "hidden",
                     }}
                   >
@@ -841,14 +882,14 @@ export default function GraphCanvas({
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "flex-start",
-                        gap: 10,
+                        gap: scaleNum(10),
                       }}
                     >
                       <div
                         style={{
                           minWidth: 0,
                           flex: 1,
-                          fontSize: "clamp(14px, 1vw, 16px)",
+                          fontSize: `clamp(${scaleMin(14, 14)}px, 1vw, ${scaleMin(16, 16)}px)`,
                           fontWeight: 700,
                           lineHeight: 1.15,
                           color: THEME.colors.textPrimary,
@@ -857,7 +898,7 @@ export default function GraphCanvas({
                           WebkitLineClamp: 2,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
-                          minHeight: 34,
+                          minHeight: scaleNum(34),
                         }}
                       >
                         {node.name}
@@ -882,13 +923,13 @@ export default function GraphCanvas({
                     <div
                       style={{
                         display: "grid",
-                        gap: 2,
+                        gap: scaleNum(2),
                         minWidth: 0,
                       }}
                     >
                       <div
                         style={{
-                          fontSize: 12,
+                          fontSize: scaleMin(12, 12),
                           fontWeight: 700,
                           color: THEME.colors.textMuted,
                           lineHeight: 1.2,
@@ -901,7 +942,7 @@ export default function GraphCanvas({
                       </div>
                       <div
                         style={{
-                          fontSize: 12,
+                          fontSize: scaleMin(12, 12),
                           color: THEME.colors.textMuted,
                           lineHeight: 1.2,
                           whiteSpace: "nowrap",
@@ -917,12 +958,16 @@ export default function GraphCanvas({
                       style={{
                         display: "flex",
                         flexWrap: "wrap",
-                        gap: 6,
+                        gap: scaleNum(6),
                         alignItems: "center",
                         marginTop: "auto",
                       }}
                     >
-                      <span style={badgeStyle({ background: THEME.colors.background })}>
+                      <span
+                        style={badgeStyle({
+                          background: THEME.colors.surfaceRow ?? THEME.colors.background,
+                        })}
+                      >
                         {StockIcon ? (
                           <StockIcon size={22} strokeWidth={2} aria-hidden="true" />
                         ) : (
@@ -932,7 +977,11 @@ export default function GraphCanvas({
                       </span>
 
                       {postureLabel ? (
-                        <span style={badgeStyle({ background: THEME.colors.background })}>
+                        <span
+                          style={badgeStyle({
+                            background: THEME.colors.surfaceRow ?? THEME.colors.background,
+                          })}
+                        >
                           {postureLabel}
                         </span>
                       ) : null}
@@ -975,10 +1024,10 @@ export default function GraphCanvas({
           title="Resize graph viewport"
           style={{
             position: "absolute",
-            right: 10,
-            bottom: 10,
-            width: 18,
-            height: 18,
+            right: scaleNum(10),
+            bottom: scaleNum(10),
+            width: scaleNum(18),
+            height: scaleNum(18),
             cursor: "nwse-resize",
             background:
               "linear-gradient(135deg, transparent 0 35%, #8c959f 35% 45%, transparent 45% 55%, #8c959f 55% 65%, transparent 65% 75%, #8c959f 75% 85%, transparent 85% 100%)",
@@ -990,12 +1039,12 @@ export default function GraphCanvas({
 
       <div
         style={{
-          marginTop: 12,
+          marginTop: scaleNum(12),
           display: "flex",
-          gap: 18,
+          gap: scaleNum(18),
           flexWrap: "wrap",
           color: THEME.colors.textMuted,
-          fontSize: 14,
+          fontSize: scaleNum(14),
         }}
       >
         <div>

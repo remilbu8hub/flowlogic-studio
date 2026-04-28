@@ -1,5 +1,5 @@
 import { THEME } from "../config/theme";
-import { cardStyle } from "./formatters";
+import { cardStyle } from "../ui/formatters";
 
 function sectionStyle() {
   return {

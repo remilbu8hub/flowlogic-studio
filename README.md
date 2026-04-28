@@ -53,6 +53,20 @@ Build for production:
 npm run build
 ```
 
+Preview the production build locally:
+
+```bash
+npm run preview
+```
+
+## Deployment
+
+FlowLogic Studio is a Vite + React app deployed on Vercel.
+
+- frontend builds are produced with `npm run build`
+- support form submissions are handled by the Vercel serverless endpoint at `/api/feedback`
+- GitHub Pages is not used for deployment
+
 ## Support
 
 Support options currently include:

@@ -1,7 +1,9 @@
 // src/components/InsightPanel.jsx
 
 import { useMemo, useState } from "react";
-import { buttonStyle, cardStyle, money, num } from "./formatters";
+import { THEME } from "../config/theme";
+import { scaleNum } from "../theme/uiScale";
+import { buttonStyle, cardStyle, money, num } from "../ui/formatters";
 
 function sumBy(rows = [], key) {
   return rows.reduce((acc, row) => acc + Number(row?.[key] || 0), 0);
@@ -19,35 +21,35 @@ function countBy(rows = [], predicate) {
 function categoryStyle(category) {
   if (category === "cost") {
     return {
-      border: "#f3c1bc",
-      bg: "#fff1f0",
-      text: "#cf222e",
+      border: "#F59E0B",
+      bg: "rgba(245,158,11,0.15)",
+      text: THEME.colors.textPrimary,
       label: "Cost",
     };
   }
 
   if (category === "flow") {
     return {
-      border: "#b6d4ff",
-      bg: "#eef6ff",
-      text: "#0969da",
+      border: "#3B82F6",
+      bg: "rgba(59,130,246,0.15)",
+      text: THEME.colors.textPrimary,
       label: "Flow",
     };
   }
 
   if (category === "risk") {
     return {
-      border: "#b7dfb9",
-      bg: "#edf7ed",
-      text: "#1a7f37",
+      border: "#22C55E",
+      bg: "rgba(34,197,94,0.15)",
+      text: THEME.colors.textPrimary,
       label: "Risk",
     };
   }
 
   return {
-    border: "#d0d7de",
-    bg: "#f6f8fa",
-    text: "#57606a",
+    border: THEME.colors.border,
+    bg: THEME.colors.surfacePanel ?? THEME.colors.background,
+    text: THEME.colors.textPrimary,
     label: "Structure",
   };
 }
@@ -604,15 +606,15 @@ export default function InsightPanel({
         style={{
           display: "flex",
           justifyContent: "space-between",
-          gap: 12,
+          gap: scaleNum(12),
           alignItems: "center",
           flexWrap: "wrap",
-          marginBottom: 12,
+          marginBottom: scaleNum(12),
         }}
       >
         <div>
           <h2 style={{ margin: 0 }}>Coaching</h2>
-          <div style={{ color: "#57606a", marginTop: 6 }}>
+          <div style={{ color: THEME.colors.secondary, marginTop: scaleNum(6) }}>
             Concise guidance on what changed and why it matters.
           </div>
         </div>
@@ -621,9 +623,10 @@ export default function InsightPanel({
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
+            gap: scaleNum(8),
             fontWeight: 600,
             cursor: "pointer",
+            color: THEME.colors.secondary,
           }}
         >
           <input
@@ -638,11 +641,11 @@ export default function InsightPanel({
       {!enabled ? (
         <div
           style={{
-            border: "1px solid #d0d7de",
-            borderRadius: 12,
-            padding: "12px 14px",
-            background: "#f6f8fa",
-            color: "#57606a",
+            border: `1px solid ${THEME.colors.border}`,
+            borderRadius: scaleNum(12),
+            padding: `${scaleNum(14)}px ${scaleNum(16)}px`,
+            background: THEME.colors.surfacePanel ?? THEME.colors.background,
+            color: THEME.colors.textPrimary,
           }}
         >
           Coaching is off. Turn it on when you want an interpretation of the current tradeoff.
@@ -650,14 +653,15 @@ export default function InsightPanel({
       ) : (
         <>
           <div
-            style={{
-              border: "1px solid #d0d7de",
-              borderRadius: 12,
-              padding: "12px 14px",
-              background: "#ffffff",
-              marginBottom: 12,
+          style={{
+              border: `1px solid ${THEME.colors.border}`,
+              borderRadius: scaleNum(12),
+              padding: `${scaleNum(14)}px ${scaleNum(16)}px`,
+              background: THEME.colors.surfacePanel ?? THEME.colors.surface,
+              marginBottom: scaleNum(12),
               fontWeight: 700,
               lineHeight: 1.4,
+              color: THEME.colors.textPrimary,
             }}
           >
             {analysis.headline}
@@ -666,8 +670,8 @@ export default function InsightPanel({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: 10,
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: scaleNum(10),
             }}
           >
             {visibleInsights.map((insight, index) => {
@@ -676,20 +680,22 @@ export default function InsightPanel({
                 <div
                   key={`${index}-${insight.text.slice(0, 24)}`}
                   style={{
-                    border: `1px solid ${palette.border}`,
-                    borderRadius: 12,
-                    padding: "10px 12px",
+                    border: `1px solid ${THEME.colors.border}`,
+                    borderLeft: `3px solid ${palette.border}`,
+                    borderRadius: scaleNum(12),
+                    padding: `${scaleNum(12)}px ${scaleNum(14)}px`,
                     background: palette.bg,
                     lineHeight: 1.45,
                     minWidth: 0,
+                    color: palette.text,
                   }}
                 >
                   <div
                     style={{
-                      fontSize: 12,
+                      fontSize: scaleNum(12),
                       fontWeight: 800,
-                      color: palette.text,
-                      marginBottom: 4,
+                      color: palette.border,
+                      marginBottom: scaleNum(6),
                       letterSpacing: "0.03em",
                     }}
                   >
@@ -702,7 +708,7 @@ export default function InsightPanel({
           </div>
 
           {showExpandButton && (
-            <div style={{ marginTop: 12 }}>
+            <div style={{ marginTop: scaleNum(12) }}>
               <button
                 type="button"
                 onClick={() => setExpanded((prev) => !prev)}
@@ -715,14 +721,23 @@ export default function InsightPanel({
 
           <div
             style={{
-              marginTop: 12,
-              border: "1px solid #d0d7de",
-              borderRadius: 12,
-              padding: "10px 12px",
-              background: "#ffffff",
+              marginTop: scaleNum(12),
+              border: `1px solid ${THEME.colors.border}`,
+              borderRadius: scaleNum(12),
+              padding: `${scaleNum(12)}px ${scaleNum(14)}px`,
+              background: THEME.colors.surfacePanel ?? THEME.colors.surface,
+              color: THEME.colors.textPrimary,
             }}
           >
-            <div style={{ fontSize: 12, color: "#57606a", marginBottom: 4 }}>Suggestion</div>
+            <div
+              style={{
+                fontSize: scaleNum(12),
+                color: THEME.colors.secondary,
+                marginBottom: scaleNum(4),
+              }}
+            >
+              Suggestion
+            </div>
             <div style={{ fontWeight: 600, lineHeight: 1.4 }}>{analysis.suggestion}</div>
           </div>
         </>
