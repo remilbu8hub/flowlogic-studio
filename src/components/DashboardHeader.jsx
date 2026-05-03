@@ -57,13 +57,6 @@ export default function DashboardHeader({
   modeLabel = "Educator",
   currentView = "simulator",
   onChangeView,
-  showParameters = true,
-  onOpenSaveScenario,
-  onOpenParameters,
-  onOpenLearning,
-  onOpenLeaderboard,
-  onResetScenario,
-  onOpenThemePicker,
 }) {
   return (
     <div
@@ -148,48 +141,6 @@ export default function DashboardHeader({
           </div>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: scaleNum(8),
-            flexWrap: "wrap",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            minWidth: 0,
-            marginLeft: "auto",
-            flex: "0 1 auto",
-          }}
-        >
-          <button
-            type="button"
-            onClick={onOpenSaveScenario}
-            style={topButtonStyle("primary")}
-          >
-            Save Scenario
-          </button>
-
-          {showParameters ? (
-            <button type="button" onClick={onOpenParameters} style={topButtonStyle()}>
-              Parameters
-            </button>
-          ) : null}
-
-          <button type="button" onClick={onOpenLearning} style={topButtonStyle()}>
-            Learning
-          </button>
-
-          <button type="button" onClick={onOpenLeaderboard} style={topButtonStyle()}>
-            Leaderboard
-          </button>
-
-          <button type="button" onClick={onOpenThemePicker} style={topButtonStyle()}>
-            Theme
-          </button>
-
-          <button type="button" onClick={onResetScenario} style={topButtonStyle("danger")}>
-            Reset Scenario
-          </button>
-        </div>
       </div>
 
       <div

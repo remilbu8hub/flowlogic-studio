@@ -21,6 +21,8 @@ const BOUNDARY_LABEL_WIDTH = scaleNum(110);
 const BOUNDARY_LABEL_HEIGHT = scaleNum(24);
 const BOUNDARY_SKIP_PADDING = scaleNum(10);
 const HORIZONTAL_BAND_OFFSET = scaleNum(120);
+const RUN_BOX_UNITS = 50;
+const RUN_BOX_MAX_VISIBLE = 10;
 
 function nodeTypeLabel(type) {
   if (type === NodeType.SUPPLIER) return "Supplier";
@@ -151,6 +153,10 @@ function badgeStyle({
   };
 }
 
+function inventoryBoxCount(quantity) {
+  return Math.max(0, Math.min(RUN_BOX_MAX_VISIBLE, Math.ceil(Math.max(0, Number(quantity) || 0) / RUN_BOX_UNITS)));
+}
+
 function getNodeBox(node) {
   const x = safeNum(node.x, stageColumnX(stageRank(node.type)));
   const y = safeNum(node.y, 100);
@@ -276,6 +282,31 @@ function segmentedButtonStyle(isActive) {
   };
 }
 
+function activeToolLabel(activeTool) {
+  if (activeTool === "connectNodes") return "Connect Nodes";
+  if (activeTool === "delete") return "Delete";
+  if (activeTool === "editNode") return "Inspect";
+  return "Select";
+}
+
+function activeToolDescription(activeTool, connectSourceNodeId) {
+  if (activeTool === "connectNodes") {
+    return connectSourceNodeId
+      ? "Click a second node to create a lane from the selected source."
+      : "Click a source node, then click a target node to create a lane.";
+  }
+
+  if (activeTool === "delete") {
+    return "Click a node or lane to remove it from the current graph.";
+  }
+
+  if (activeTool === "editNode") {
+    return "Click a node to inspect it and reveal contextual controls in the left sidebar.";
+  }
+
+  return "Drag nodes to reposition them within their allowed stage band. Double click a node to edit it. Click a lane to inspect it.";
+}
+
 function laneLabelText(edge) {
   const transportLabel = getTransportTypeConfig(edge.transportType).label;
   return `${transportLabel} | LT: ${safeNum(edge.L)} | σ: ${safeNum(edge.s, 1)}`;
@@ -360,15 +391,22 @@ export default function GraphCanvas({
   nodes,
   edges,
   result,
+  runNodeStateById = null,
   boundaryColumn = 2,
   autoInventoryType,
   selectedNodeId,
   selectedEdgeId,
+  activeTool = "select",
+  connectSourceNodeId = null,
   viewMode = "graph",
   costView = null,
   onViewModeChange,
   onSelectNode,
   onSelectEdge,
+  onCreateConnection,
+  onDeleteNode,
+  onDeleteEdge,
+  onSetConnectSourceNodeId,
   onAutoLayout,
   onMoveNode,
   onOpenNodeEditor,
@@ -399,7 +437,7 @@ export default function GraphCanvas({
   }, [preferredViewportHeight]);
 
   function handlePointerDown(event, node) {
-    if (!onMoveNode || !isGraphView) return;
+    if (!onMoveNode || !isGraphView || activeTool !== "select") return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -474,13 +512,21 @@ export default function GraphCanvas({
     window.removeEventListener("pointerup", handleResizePointerUp);
   }
 
-  function handleCanvasClick() {
+  function handleCanvasClick(event) {
     if (!isGraphView) return;
+
+    if (activeTool === "connectNodes") {
+      onSetConnectSourceNodeId?.(null);
+      onSelectEdge?.(null);
+      return;
+    }
+
     onSelectEdge?.(null);
+    onSelectNode?.(null);
   }
 
   function handleCanvasDoubleClick(event) {
-    if (!isGraphView || !onMoveNode || !selectedNodeId || !scrollRef.current) return;
+    if (!isGraphView || activeTool !== "select" || !onMoveNode || !selectedNodeId || !scrollRef.current) return;
 
     const selectedNode = findNode(nodes, selectedNodeId);
     if (!selectedNode) return;
@@ -562,7 +608,7 @@ export default function GraphCanvas({
             }}
           >
             {isGraphView
-              ? "Drag nodes to reposition them within their allowed stage band. Double click a node to edit it. Click a lane to inspect it."
+              ? activeToolDescription(activeTool, connectSourceNodeId)
               : "Review cumulative cost buildup in supply chain order without leaving the canvas workspace."}
           </p>
         </div>
@@ -686,8 +732,8 @@ export default function GraphCanvas({
                   const labelTextX = edge.isOutsourced ? path.midX - 14 : path.midX;
                   const tooltipText = laneTooltipText(edge, fromNode, toNode);
 
-                  return (
-                    <g key={edge.id}>
+                return (
+                  <g key={edge.id}>
                       {isSelected ? (
                         <path
                           d={path.d}
@@ -716,10 +762,20 @@ export default function GraphCanvas({
                         style={{ cursor: "pointer" }}
                         onClick={(event) => {
                           event.stopPropagation();
+                          if (activeTool === "delete") {
+                            onDeleteEdge?.(edge.id);
+                            onSetConnectSourceNodeId?.(null);
+                            return;
+                          }
                           onSelectEdge?.(edge.id);
+                          onSelectNode?.(null);
+                          if (activeTool === "connectNodes") {
+                            onSetConnectSourceNodeId?.(null);
+                          }
                         }}
                         onDoubleClick={(event) => {
                           event.stopPropagation();
+                          if (activeTool === "delete") return;
                           onSelectEdge?.(edge.id);
                           onOpenLaneEditor?.();
                         }}
@@ -826,6 +882,7 @@ export default function GraphCanvas({
 
               {nodes.map((node) => {
                 const isSelected = node.id === selectedNodeId;
+                const isConnectSource = node.id === connectSourceNodeId;
                 const box = getNodeBox(node);
                 const simNode = findSimulationNode(result, node.id);
                 const inventoryType = displayInventoryType(node, simNode, autoInventoryType);
@@ -837,6 +894,25 @@ export default function GraphCanvas({
                     ? formatLabel(node.sourcingPosture)
                     : null;
                 const riskLabel = simNode?.riskLabel ?? node.riskLevel ?? null;
+                const runNodeState = runNodeStateById?.[node.id] ?? null;
+                const carriesRunInventory = Boolean(runNodeState?.carriesInventory);
+                const hasRunBacklog = carriesRunInventory && Number(runNodeState?.backlog ?? 0) > 0;
+                const hasHighRunInventory = Boolean(runNodeState?.inventoryHot) && !hasRunBacklog;
+                const unmetCustomerDemand = Number(runNodeState?.unmetCustomerDemand ?? 0);
+                const hasServiceFailure = !carriesRunInventory && unmetCustomerDemand > 0;
+                const visibleRunBoxes = carriesRunInventory
+                  ? inventoryBoxCount(runNodeState?.inventory ?? 0)
+                  : 0;
+                const runSurfaceTint = hasRunBacklog
+                  ? "linear-gradient(180deg, rgba(220,38,38,0.10), rgba(220,38,38,0.04))"
+                  : hasHighRunInventory
+                    ? "linear-gradient(180deg, rgba(37,99,235,0.10), rgba(37,99,235,0.04))"
+                    : nodeColor(node.type);
+                const runAccentShadow = hasRunBacklog
+                  ? `0 0 0 1px ${THEME.colors.danger}, 0 8px 18px rgba(220,38,38,0.16)`
+                  : hasHighRunInventory
+                    ? `0 0 0 1px ${THEME.colors.primary}, 0 8px 18px rgba(37,99,235,0.14)`
+                    : null;
 
                 return (
                   <button
@@ -844,11 +920,37 @@ export default function GraphCanvas({
                     type="button"
                     onClick={(event) => {
                       event.stopPropagation();
+                      if (activeTool === "delete") {
+                        onDeleteNode?.(node.id);
+                        return;
+                      }
+
+                      if (activeTool === "connectNodes") {
+                        onSelectNode?.(node.id);
+                        onSelectEdge?.(null);
+
+                        if (connectSourceNodeId && connectSourceNodeId !== node.id) {
+                          onCreateConnection?.(connectSourceNodeId, node.id);
+                          onSetConnectSourceNodeId?.(null);
+                          return;
+                        }
+
+                        onSetConnectSourceNodeId?.(
+                          connectSourceNodeId === node.id ? null : node.id
+                        );
+                        return;
+                      }
+
                       onSelectNode?.(node.id);
                       onSelectEdge?.(null);
+
+                      if (activeTool === "editNode") {
+                        onOpenNodeEditor?.(node.id);
+                      }
                     }}
                     onDoubleClick={(event) => {
                       event.stopPropagation();
+                      if (activeTool === "delete") return;
                       onSelectNode?.(node.id);
                       onSelectEdge?.(null);
                       onOpenNodeEditor?.(node.id);
@@ -863,13 +965,29 @@ export default function GraphCanvas({
                       borderRadius: 16,
                       border: isSelected
                         ? `3px solid ${THEME.colors.primary}`
-                        : `2px solid ${THEME.colors.secondary}`,
-                      background: nodeColor(node.type),
+                        : isConnectSource
+                          ? `3px dashed ${THEME.colors.primary}`
+                        : hasRunBacklog
+                          ? `2px solid ${THEME.colors.danger}`
+                          : hasHighRunInventory
+                            ? `2px solid ${THEME.colors.primary}`
+                            : `2px solid ${THEME.colors.secondary}`,
+                      background: runSurfaceTint,
                       padding: scaleNum(12),
                       textAlign: "left",
-                      cursor: isDragging && isSelected ? "grabbing" : "grab",
+                      cursor:
+                        activeTool === "select"
+                          ? isDragging && isSelected
+                            ? "grabbing"
+                            : "grab"
+                          : activeTool === "delete"
+                            ? "not-allowed"
+                            : "pointer",
                       color: THEME.colors.textPrimary,
-                      boxShadow: isSelected ? THEME.shadow.focus : THEME.shadow.card,
+                      boxShadow:
+                        isSelected || isConnectSource
+                          ? THEME.shadow.focus
+                          : runAccentShadow ?? THEME.shadow.card,
                       userSelect: "none",
                       display: "flex",
                       flexDirection: "column",
@@ -997,8 +1115,132 @@ export default function GraphCanvas({
                           {riskLabel}
                         </span>
                       ) : null}
+
+                      {carriesRunInventory ? (
+                        <span
+                          style={badgeStyle({
+                            background: THEME.colors.surfaceRow ?? THEME.colors.background,
+                          })}
+                        >
+                          Inv {Math.round(runNodeState.inventory ?? 0)}
+                        </span>
+                      ) : null}
+
+                      {carriesRunInventory ? (
+                        <span
+                          style={badgeStyle({
+                            textColor:
+                              Number(runNodeState.backlog ?? 0) > 0
+                                ? THEME.colors.danger
+                                : THEME.colors.textPrimary,
+                            background: THEME.colors.surfaceRow ?? THEME.colors.background,
+                            borderColor:
+                              Number(runNodeState.backlog ?? 0) > 0
+                                ? THEME.colors.danger
+                                : THEME.colors.border,
+                          })}
+                        >
+                          Backlog {Math.round(runNodeState.backlog ?? 0)}
+                        </span>
+                      ) : null}
+
+                      {hasHighRunInventory ? (
+                        <span
+                          style={badgeStyle({
+                            textColor: THEME.colors.primary,
+                            background: THEME.colors.surface,
+                            borderColor: THEME.colors.primary,
+                          })}
+                        >
+                          High stock
+                        </span>
+                      ) : null}
+
+                      {hasServiceFailure ? (
+                        <span
+                          style={badgeStyle({
+                            textColor: THEME.colors.danger,
+                            background: THEME.colors.surface,
+                            borderColor: THEME.colors.danger,
+                          })}
+                        >
+                          Missed {Math.round(unmetCustomerDemand)}
+                        </span>
+                      ) : null}
                     </div>
                   </button>
+                );
+              })}
+
+              {nodes.map((node) => {
+                const box = getNodeBox(node);
+                const runNodeState = runNodeStateById?.[node.id] ?? null;
+                const carriesRunInventory = Boolean(runNodeState?.carriesInventory);
+                const visibleRunBoxes = carriesRunInventory
+                  ? inventoryBoxCount(runNodeState?.inventory ?? 0)
+                  : 0;
+
+                if (!carriesRunInventory || visibleRunBoxes <= 0) return null;
+
+                const isCapped = Math.ceil(Math.max(0, Number(runNodeState?.inventory ?? 0)) / RUN_BOX_UNITS) > RUN_BOX_MAX_VISIBLE;
+
+                return (
+                  <div
+                    key={`${node.id}-run-box-pile`}
+                    style={{
+                      position: "absolute",
+                      left: box.x,
+                      top: box.bottom + scaleNum(8),
+                      width: NODE_WIDTH,
+                      display: "grid",
+                      justifyItems: "center",
+                      gap: scaleNum(4),
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                        gap: scaleNum(4),
+                        justifyItems: "center",
+                        maxWidth: scaleNum(104),
+                      }}
+                    >
+                      {Array.from({ length: visibleRunBoxes }, (_, index) => (
+                        <span
+                          key={`${node.id}-run-box-${index}`}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: scaleNum(14),
+                            height: scaleNum(14),
+                            borderRadius: 4,
+                            background: THEME.colors.surface,
+                            border: `1px solid ${THEME.colors.border}`,
+                            color: THEME.colors.primary,
+                          }}
+                        >
+                          <Box size={10} strokeWidth={2} aria-hidden="true" />
+                        </span>
+                      ))}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: scaleNum(11),
+                        fontWeight: 700,
+                        color: THEME.colors.textMuted,
+                        background: THEME.colors.surface,
+                        border: `1px solid ${THEME.colors.border}`,
+                        borderRadius: 999,
+                        padding: `${scaleNum(2)}px ${scaleNum(8)}px`,
+                      }}
+                    >
+                      {Math.round(runNodeState.inventory ?? 0)} units
+                      {isCapped ? " +" : ""}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -1055,6 +1297,9 @@ export default function GraphCanvas({
         </div>
         <div>
           <b>Grid:</b> {GRID}px snap
+        </div>
+        <div>
+          <b>Active tool:</b> {activeToolLabel(activeTool)}
         </div>
         {isGraphView ? (
           <div>

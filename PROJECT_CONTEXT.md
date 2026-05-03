@@ -42,6 +42,39 @@ Those modes share the same simulation engine and graph model, but they change fr
 - Educator mode emphasizes coaching and simpler controls
 - Business mode emphasizes decision support and detailed cost visibility
 
+## Business KPI System
+
+Business mode now supports user-selected KPIs as decision priorities.
+
+Important rules:
+
+- KPIs are user-selected decision priorities, not new engine outputs
+- KPI selection does **not** change engine math
+- KPI selection changes emphasis, ordering, and future analysis behavior
+- Business mode uses analysis / decision-priority framing
+- Educator mode keeps fixed teaching-oriented outputs
+- KPI selection is controlled through a compact popup/button UI in Business Mode
+- There is no max selected KPI limit, but at least one KPI must remain selected
+- Service level is not a default KPI yet because it is not fully meaningful in the current model
+
+## Optimize Mode (v3)
+
+Optimize Mode is the first business-grade decision-support workspace.
+
+Purpose:
+
+- Compare scenario snapshots using the currently selected KPI set
+- Surface tradeoffs across cost, speed, and risk without changing simulation math
+- Support structured scenario review before any future optimization algorithm exists
+
+Current rules:
+
+- Snapshots are temporary and session-based only
+- KPI selection drives comparison emphasis and ranking logic
+- KPI selection still does **not** change engine behavior
+- Optimize Mode is decision support, not auto-optimization
+- The live graph remains visible, but snapshot comparison is the primary analysis surface in this workspace
+
 Mode configuration lives in:
 
 - `src/config/appModes.js`

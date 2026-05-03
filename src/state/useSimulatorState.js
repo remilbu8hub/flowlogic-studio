@@ -121,12 +121,26 @@ export function useSimulatorState() {
     });
   }
 
-  function addNode(type) {
-    const template = defaultNodeTemplate(type);
+  function addNode(type, position = null) {
+    const template = {
+      ...defaultNodeTemplate(type),
+      ...(position ?? {}),
+    };
     setNodes((prev) => [...prev, template]);
     setSelectedNodeId(template.id);
     setSelectedEdgeId(null);
     return template;
+  }
+
+  function removeNodeById(nodeId) {
+    if (!nodeId) return;
+
+    const next = removeNode(nodes, edges, nodeId);
+    setGraph(next.nodes, next.edges);
+    setSelectedNodeId((prevSelectedNodeId) =>
+      prevSelectedNodeId === nodeId ? next.nodes[0]?.id ?? null : prevSelectedNodeId
+    );
+    setSelectedEdgeId(null);
   }
 
   function removeSelectedNode() {
@@ -187,6 +201,14 @@ export function useSimulatorState() {
     if (!selectedEdgeId) return;
     setEdges((prev) => removeEdge(prev, selectedEdgeId));
     setSelectedEdgeId(null);
+  }
+
+  function removeEdgeById(edgeId) {
+    if (!edgeId) return;
+    setEdges((prev) => removeEdge(prev, edgeId));
+    setSelectedEdgeId((prevSelectedEdgeId) =>
+      prevSelectedEdgeId === edgeId ? null : prevSelectedEdgeId
+    );
   }
 
   function connectSelectedNodeTo(targetNodeId) {
@@ -399,6 +421,7 @@ export function useSimulatorState() {
 
     updateNode,
     addNode,
+    removeNodeById,
     removeSelectedNode,
     moveNode,
     autoLayout,
@@ -406,6 +429,7 @@ export function useSimulatorState() {
     addCustomEdge,
     updateLane,
     updateLaneByEndpoints,
+    removeEdgeById,
     removeSelectedEdge,
     addParallelSupplierToSelected,
     addBranchCustomerFromSelected,
